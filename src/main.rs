@@ -16,7 +16,9 @@ use clap::error::ErrorKind;
 
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::info_dto::InfoDTO;
+use crate::dto::inject_dto::InjectDTO;
 use crate::dto::update_dto::UpdateDTO;
+use crate::elf64::inject;
 
 #[derive(Parser)]
 struct Cli {
@@ -109,34 +111,19 @@ fn main() -> Result<(), Error> {
         Commands::Inject { file, address, return_address, inject, output, section } => {
             binary = load_file(file)?;
 
-            let bytes = fs::read(inject)?; 
+            let dto = InjectDTO {
+                file,
+                inject,
+                address: address.as_deref(),
+                section: section.as_deref(),
+                return_address: return_address.as_deref(),
+                output
+            };
 
-            let mut final_address = binary.get_address_to_inject();
-            let mut final_return_address = binary.entry();
-            let mut final_section = ".note.ABI-tag";
+            let mut inject = binary.inject(dto);
 
-            if let Some(address) = address.as_ref() {
-                final_address = parse_hex_to_u64(address);
-            }
-
-            if let Some(return_address) = return_address.as_ref() {
-                final_return_address = parse_hex_to_u64(return_address);
-            }
-
-            if let Some(section) = section.as_ref() {
-                final_section = section;
-            }
-
-            let injected: Vec<u8> = binary.inject(bytes, final_address, final_section);
-            println!("Payload injected at 0x{:X}", final_address);
-            let rel32_addr = binary.calculate_rel32(final_address, final_return_address);
-            if return_address.is_some() {
-                println!("Rel32 to 0x{:X}: 0x{:X}", final_return_address, rel32_addr);
-            }else {
-                println!("Rel32 to original entry point (0x{:X}): 0x{:X}", final_return_address, rel32_addr);
-            }
-            save_file(output, &injected)?;
-            println!("Output written to: {}", output);
+            inject.execute()
+                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::CheckInject { file, return_address } => {
             binary = load_file(file)?;
