@@ -5,8 +5,6 @@ mod disasm;
 mod dto;
 
 use elf64::Elf64Binary;
-use utils::parse_hex::parse_hex_to_u64;
-use utils::save_file::save_file;
 use dto::disasm_dto::DisasmDTO;
 
 use std::fs;
@@ -18,7 +16,6 @@ use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::info_dto::InfoDTO;
 use crate::dto::inject_dto::InjectDTO;
 use crate::dto::update_dto::UpdateDTO;
-use crate::elf64::inject;
 
 #[derive(Parser)]
 struct Cli {

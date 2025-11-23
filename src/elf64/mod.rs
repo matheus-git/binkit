@@ -130,7 +130,10 @@ impl Elf64Binary {
     }
 
     pub fn inject<'a>(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary<'a> {
-
+        InjectBinary { 
+            binary: self, 
+            dto 
+        }
     }
 
     pub fn entry(&self) -> u64 {
