@@ -2,18 +2,22 @@ mod elf64;
 mod traits;
 mod utils;
 mod disasm;
+mod dto;
 
 use elf64::Elf64Binary;
 use elf64::printers::Elf64Printer;
 use traits::binary_printer::BinaryPrinter;
 use traits::binary::Binary;
-use disasm::disass;
 use utils::parse_hex::parse_hex;
+use utils::save_file::save_file;
+use dto::disasm_dto::DisasmDTO;
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 
 use clap::{Parser, Error, Subcommand};
+use clap::error::ErrorKind;
+
+use crate::dto::update_dto::UpdateDTO;
 
 #[derive(Parser)]
 struct Cli {
@@ -96,13 +100,6 @@ fn load_file(file: &str) -> Result<Elf64Binary, Error> {
     Ok(Elf64Binary::new(&bytes))
 }
 
-fn save_file(file: &str, buf: &[u8]) -> Result<(), Error>{
-    let _ = fs::write(file, buf);
-    let mut perms = fs::metadata(&file)?.permissions();
-    perms.set_mode(0o755); 
-    fs::set_permissions(&file, perms)?;
-    Ok(())
-}
 
 fn main() -> Result<(), Error> {
     let cli = Cli::parse();
@@ -166,15 +163,15 @@ fn main() -> Result<(), Error> {
         Commands::Disasm { file, section } => {
             binary = load_file(file)?;
 
-            let mut final_section = ".text";
+            let dto = DisasmDTO {
+                file,
+                section: section.as_deref(),
+            };
 
-            if let Some(section) = section.as_ref() {
-                final_section = section;
-            }
+            let disasm = binary.disasm(dto);
 
-            if let Some((addr, bytes)) = binary.get_bytes_section(final_section) {
-                disass(addr, &bytes);
-            }
+            disasm.execute()
+                .map_err(|e| clap::Error::raw(ErrorKind::Io, e.to_string()))?;
         },
         Commands::Info { file, header, programs, sections } => {
             binary = load_file(file)?;
@@ -189,18 +186,16 @@ fn main() -> Result<(), Error> {
         Commands::Update { file, entry, output } => {
             binary = load_file(file)?;
 
-            let mut final_output = file;
+            let dto = UpdateDTO {
+                file,
+                entry: entry.as_deref(),
+                output: output.as_deref()
+            };
 
-            if let Some(output) = output {
-                final_output = output;
-            }
+            let mut update = binary.update(dto);
 
-            if entry.is_some() {
-                binary.set_entry(entry.as_ref().unwrap().to_string());
-                let bytes: Vec<u8> = (&binary).into();
-                save_file(final_output, &bytes)?;
-                println!("Output written to: {}", final_output);
-            }
+            update.execute()
+                .map_err(|e| clap::Error::raw(ErrorKind::Io, e.to_string()))?;
         }
     }
 

@@ -1,7 +1,12 @@
 mod loaders;
 pub mod types;
 pub mod printers;
+pub mod disasm;
+pub mod update;
 
+use disasm::DisasmBinary;
+use update::UpdateBinary;
+use std::cmp::max;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
 use loaders::load_elf64_section_header::LoadELF64SectionHeader;
@@ -9,9 +14,11 @@ use loaders::load_elf64_section_header::LoadELF64SectionHeader;
 use types::elf64_header::Elf64Header;
 use types::elf64_program_header::Elf64ProgramHeader;
 use types::elf64_section_header::Elf64SectionHeader;
+use crate::dto::update_dto::UpdateDTO;
 use crate::traits::binary::Binary;
 use crate::utils::endian::Endian;
 use crate::utils::string_until_null::string_until_null;
+use crate::dto::disasm_dto::DisasmDTO;
 
 fn parse_program_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64ProgramHeader> {
     let mut headers = Vec::with_capacity(elf_header.e_phnum.value as usize);
@@ -81,26 +88,22 @@ impl Elf64Binary {
         }
     }
 
-    pub fn get_bytes_section(&self, section_name: &str) -> Option<(u64, Vec<u8>)> {
-        let section = self.get_section_headers()
-            .iter()
-            .find(|s| s.sh_name.name == section_name)
-            .map(|s| s);
+    pub fn endian(&self) -> Endian {
+        self.header.e_ident.endian()
+    }
 
-        if let Some(section) = section {
-            let endian = self.header.e_ident.endian();
-
-            let bytes: Vec<u8> = self.into();
-            let offset = endian.read_u64(section.sh_offset.raw) as usize;
-            let size = endian.read_u64(section.sh_size.raw) as usize;
-            return Some((endian.read_u64(section.sh_addr.raw), bytes[offset..offset + size].to_vec()));
-        }else {
-            return None;
+    pub fn disasm<'a>(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
+        DisasmBinary {
+            binary: self,
+            dto
         }
     }
 
-    pub fn endian(&self) -> Endian {
-        self.header.e_ident.endian()
+    pub fn update<'a>(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary<'a> {
+        UpdateBinary {
+            binary: self,
+            dto
+        }
     }
 
     pub fn entry(&self) -> u64 {
@@ -114,7 +117,10 @@ impl Elf64Binary {
         let mut higher_addr: u64 = 0;
         for program in program_headers {
             let initial_address = endian.read_u64(program.p_vaddr.raw);
-            let memsz = endian.read_u64(program.p_filesz.raw);
+            let memsz = max(
+                endian.read_u64(program.p_memsz.raw),
+                endian.read_u64(program.p_filesz.raw)
+            );
             let final_address = initial_address + memsz;
             if final_address > higher_addr {
                 higher_addr = final_address;
@@ -201,15 +207,6 @@ impl Elf64Binary {
         injected.extend(buf);
 
         injected
-    }
-
-    pub fn set_entry(&mut self, hex_entry: String) {
-        let endian = self.header.e_ident.endian();
-
-        let entry = u64::from_str_radix(hex_entry.trim_start_matches("0x"), 16)
-            .expect("Failed to parse hex string");
-
-        self.header.e_entry.raw = endian.to_bytes_u64(entry);
     }
 }
 
