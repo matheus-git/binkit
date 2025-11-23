@@ -13,9 +13,9 @@ impl CheckInjectBinary<'_> {
     pub fn execute(&self) -> Result<(), Box<dyn Error>> {
         let endian = self.binary.endian();
         let default_return_address = bytes_to_hex(&endian.to_bytes_u64(self.binary.entry()));
-        let return_address = self.dto.return_address.unwrap_or_else(|| {
+        let return_address = self.dto.return_address.unwrap_or(
             default_return_address.as_str()
-        });
+        );
 
         let addr = self.binary.get_address_to_inject();
         println!("Injection slot available at: 0x{:X}", addr);

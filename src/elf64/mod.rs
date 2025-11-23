@@ -128,7 +128,7 @@ impl Elf64Binary {
 
     pub fn entry(&self) -> u64 {
         let endian = self.endian();
-        return endian.read_u64(self.header.e_entry.raw);
+        endian.read_u64(self.header.e_entry.raw)
     }
 
     pub fn get_address_to_inject(&self) -> u64 {
@@ -152,13 +152,13 @@ impl Elf64Binary {
     pub fn calculate_new_addr(&self, addr: u64) -> u64 {
         let bytes: Vec<u8> = self.into();
         let offset = bytes.len() as u64;
-        let delta = (offset % ALIGN + ALIGN - (addr as u64 % ALIGN)) % ALIGN;
+        let delta = (offset % ALIGN + ALIGN - (addr % ALIGN)) % ALIGN;
         addr + delta
     }
 
     #[inline]
     pub fn calculate_rel32(&self, addr_base: u64, addr_target: u64) -> i64 {
-        return addr_target as i64 - addr_base as i64;
+        addr_target as i64 - addr_base as i64
     }
 
     pub fn update_section_name(&mut self, section_name_idx: usize){
@@ -185,8 +185,7 @@ impl Elf64Binary {
 
         let note_section = self.section_headers
             .iter_mut()
-            .find(|s| s.sh_name.name == target_section)
-            .map(|s| s);
+            .find(|s| s.sh_name.name == target_section);
 
         let note_offset = if let Some(section) = note_section {
             let note_offset = section.sh_offset.raw;
