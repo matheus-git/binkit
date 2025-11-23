@@ -1,4 +1,4 @@
-pub fn parse_hex(s: &str) -> u64 {
+pub fn parse_hex_to_u64(s: &str) -> u64 {
     let s = s.trim();
     let hex = if let Some(rest) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
         rest

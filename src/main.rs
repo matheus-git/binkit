@@ -5,7 +5,7 @@ mod disasm;
 mod dto;
 
 use elf64::Elf64Binary;
-use utils::parse_hex::parse_hex;
+use utils::parse_hex::parse_hex_to_u64;
 use utils::save_file::save_file;
 use dto::disasm_dto::DisasmDTO;
 
@@ -14,6 +14,7 @@ use std::fs;
 use clap::{Parser, Error, Subcommand};
 use clap::error::ErrorKind;
 
+use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::info_dto::InfoDTO;
 use crate::dto::update_dto::UpdateDTO;
 
@@ -115,11 +116,11 @@ fn main() -> Result<(), Error> {
             let mut final_section = ".note.ABI-tag";
 
             if let Some(address) = address.as_ref() {
-                final_address = parse_hex(address);
+                final_address = parse_hex_to_u64(address);
             }
 
             if let Some(return_address) = return_address.as_ref() {
-                final_return_address = parse_hex(return_address);
+                final_return_address = parse_hex_to_u64(return_address);
             }
 
             if let Some(section) = section.as_ref() {
@@ -140,21 +141,15 @@ fn main() -> Result<(), Error> {
         Commands::CheckInject { file, return_address } => {
             binary = load_file(file)?;
 
-            let mut final_return_address = binary.entry();
+            let dto = CheckInjectDTO {
+                file,
+                return_address: return_address.as_deref()
+            };
 
-            if let Some(return_address) = return_address.as_ref() {
-                final_return_address = parse_hex(return_address);
-            }
+            let check_inject = binary.check_inject(dto);
 
-            let addr = binary.get_address_to_inject();
-            println!("Injection slot available at: 0x{:X}", addr);
-
-            let rel32_addr = binary.calculate_rel32(addr, final_return_address);
-            if return_address.is_some() {
-                println!("Rel32 relative to 0x{:X}: 0x{:X}", final_return_address, rel32_addr);
-            }else {
-                println!("Rel32 to original entry point (0x{:X}): 0x{:X}", final_return_address, rel32_addr);
-            }
+            check_inject.execute()
+                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::Disasm { file, section } => {
             binary = load_file(file)?;
@@ -167,7 +162,7 @@ fn main() -> Result<(), Error> {
             let disasm = binary.disasm(dto);
 
             disasm.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::Io, e.to_string()))?;
+                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::Info { file, header, programs, sections } => {
             binary = load_file(file)?;
@@ -196,7 +191,7 @@ fn main() -> Result<(), Error> {
             let mut update = binary.update(dto);
 
             update.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::Io, e.to_string()))?;
+                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         }
     }
 

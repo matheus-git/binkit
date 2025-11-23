@@ -4,6 +4,7 @@ pub mod printers;
 pub mod disasm;
 pub mod update;
 pub mod info;
+pub mod check_inject;
 
 use disasm::DisasmBinary;
 use update::UpdateBinary;
@@ -16,8 +17,10 @@ use loaders::load_elf64_section_header::LoadELF64SectionHeader;
 use types::elf64_header::Elf64Header;
 use types::elf64_program_header::Elf64ProgramHeader;
 use types::elf64_section_header::Elf64SectionHeader;
+use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::info_dto::InfoDTO;
 use crate::dto::update_dto::UpdateDTO;
+use crate::elf64::check_inject::CheckInjectBinary;
 use crate::traits::binary::Binary;
 use crate::utils::endian::Endian;
 use crate::utils::string_until_null::string_until_null;
@@ -116,6 +119,13 @@ impl Elf64Binary {
         }
     }
 
+    pub fn check_inject<'a>(&'a self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary<'a> {
+        CheckInjectBinary { 
+            binary: self, 
+            dto 
+        }
+    }
+
     pub fn entry(&self) -> u64 {
         let endian = self.endian();
         return endian.read_u64(self.header.e_entry.raw);
@@ -146,6 +156,7 @@ impl Elf64Binary {
         addr + delta
     }
 
+    #[inline]
     pub fn calculate_rel32(&self, addr_base: u64, addr_target: u64) -> i64 {
         return addr_target as i64 - addr_base as i64;
     }
