@@ -3,9 +3,11 @@ pub mod types;
 pub mod printers;
 pub mod disasm;
 pub mod update;
+pub mod info;
 
 use disasm::DisasmBinary;
 use update::UpdateBinary;
+use info::InfoBinary;
 use std::cmp::max;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
@@ -14,6 +16,7 @@ use loaders::load_elf64_section_header::LoadELF64SectionHeader;
 use types::elf64_header::Elf64Header;
 use types::elf64_program_header::Elf64ProgramHeader;
 use types::elf64_section_header::Elf64SectionHeader;
+use crate::dto::info_dto::InfoDTO;
 use crate::dto::update_dto::UpdateDTO;
 use crate::traits::binary::Binary;
 use crate::utils::endian::Endian;
@@ -103,6 +106,13 @@ impl Elf64Binary {
         UpdateBinary {
             binary: self,
             dto
+        }
+    }
+
+    pub fn info<'a>(&'a self, dto: InfoDTO<'a>) -> InfoBinary<'a> {
+        InfoBinary { 
+            binary: self, 
+            dto 
         }
     }
 

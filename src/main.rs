@@ -5,9 +5,6 @@ mod disasm;
 mod dto;
 
 use elf64::Elf64Binary;
-use elf64::printers::Elf64Printer;
-use traits::binary_printer::BinaryPrinter;
-use traits::binary::Binary;
 use utils::parse_hex::parse_hex;
 use utils::save_file::save_file;
 use dto::disasm_dto::DisasmDTO;
@@ -17,6 +14,7 @@ use std::fs;
 use clap::{Parser, Error, Subcommand};
 use clap::error::ErrorKind;
 
+use crate::dto::info_dto::InfoDTO;
 use crate::dto::update_dto::UpdateDTO;
 
 #[derive(Parser)]
@@ -106,8 +104,6 @@ fn main() -> Result<(), Error> {
 
     let mut binary: Elf64Binary;
 
-    let printer: Elf64Printer = Elf64Printer;
-
     match &cli.command {
         Commands::Inject { file, address, return_address, inject, output, section } => {
             binary = load_file(file)?;
@@ -175,13 +171,18 @@ fn main() -> Result<(), Error> {
         },
         Commands::Info { file, header, programs, sections } => {
             binary = load_file(file)?;
-            if *header {
-                printer.print_header(binary.get_header());
-            } else if *programs {
-                printer.print_program_headers(binary.get_program_headers());
-            } else if *sections {
-                printer.print_section_headers(binary.get_section_headers());
-            } 
+
+            let dto = InfoDTO {
+                file, 
+                header: *header,
+                programs: *programs, 
+                sections: *sections
+            };
+
+            let info = binary.info(dto);
+
+            info.execute()
+                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::Update { file, entry, output } => {
             binary = load_file(file)?;
