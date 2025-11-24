@@ -7,6 +7,7 @@ pub mod info;
 pub mod check_inject;
 pub mod inject;
 
+use std::borrow::Cow;
 use disasm::DisasmBinary;
 use update::UpdateBinary;
 use info::InfoBinary;
@@ -71,15 +72,15 @@ fn resolve_section_name(section_headers: &mut Vec<Elf64SectionHeader>, buf: &[u8
 const ALIGN: u64 = 0x1000;
 
 #[derive(Debug)]
-pub struct Elf64Binary {
-    header: Elf64Header,
+pub struct Elf64Binary<'a> {
+    header: Elf64Header<'a>,
     program_headers: Vec<Elf64ProgramHeader>,
     section_headers: Vec<Elf64SectionHeader>,
-    raw: Vec<u8>
+    raw: Cow<'a, [u8]>
 }
 
-impl Elf64Binary {
-    pub fn new(buf: &[u8]) -> Self{
+impl<'a> Elf64Binary<'a> {
+    pub fn new(buf: &'a [u8]) -> Self{
         let load_elf_header =  LoadELF64Header::from_bytes(buf);
         let elf_header = Elf64Header::new(load_elf_header);
         let endian: Endian = elf_header.e_ident.endian();
@@ -93,7 +94,7 @@ impl Elf64Binary {
             header: elf_header, 
             program_headers,
             section_headers,
-            raw: buf.to_vec()
+            raw: Cow::Borrowed(buf)
         }
     }
 
@@ -101,35 +102,35 @@ impl Elf64Binary {
         self.header.e_ident.endian()
     }
 
-    pub fn disasm<'a>(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
+    pub fn disasm(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
         DisasmBinary {
             binary: self,
             dto
         }
     }
 
-    pub fn update<'a>(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary<'a> {
+    pub fn update(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary<'a> {
         UpdateBinary {
             binary: self,
             dto
         }
     }
 
-    pub fn info<'a>(&'a self, dto: InfoDTO<'a>) -> InfoBinary<'a> {
+    pub fn info(&'a self, dto: InfoDTO<'a>) -> InfoBinary<'a> {
         InfoBinary { 
             binary: self, 
             dto 
         }
     }
 
-    pub fn check_inject<'a>(&'a self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary<'a> {
+    pub fn check_inject(&'a self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary<'a> {
         CheckInjectBinary { 
             binary: self, 
             dto 
         }
     }
 
-    pub fn inject<'a>(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary<'a> {
+    pub fn inject(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary<'a> {
         InjectBinary { 
             binary: self, 
             dto 

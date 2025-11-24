@@ -1,28 +1,25 @@
-use crate::{traits::header_field::HeaderField, utils::{bytes_to_hex::bytes_to_hex, endian::Endian}};
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
-pub struct EShoff {
-    pub raw: [u8; 8],
-    pub value: u64,
-    pub as_hex: String
+pub struct EShoff<'a> {
+    pub raw: Cow<'a, [u8; 8]>,
 }
 
-impl EShoff {
-    pub fn new(raw: [u8; 8], endian: &Endian) -> Self {
-
-        let value = endian.read_u64(raw);
-        let as_hex = bytes_to_hex(&raw);
-
+impl<'a> EShoff<'a> {
+    pub fn new(raw: Cow<'a, [u8; 8]>) -> Self {
         Self { 
             raw, 
-            value,
-            as_hex
         }
     }
 }
 
-impl HeaderField for EShoff {
-    fn describe(&self) -> String {
-        self.value.to_string()
+impl<'a> HeaderField for EShoff<'a> {
+    type Value = u64;
+    fn describe(&self, endian: &Endian) -> String {
+        self.value(endian).to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+        endian.read_u64(*self.raw)
     }
 }

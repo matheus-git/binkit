@@ -1,28 +1,26 @@
-use crate::{traits::header_field::HeaderField, utils::{bytes_to_hex::bytes_to_hex, endian::Endian}};
+use std::borrow::Cow;
+
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
-pub struct EPhnum {
-    pub raw: [u8; 2],
-    pub value: u16,
-    pub as_hex: String
+pub struct EPhnum<'a> {
+    pub raw: Cow<'a, [u8; 2]>,
 }
 
-impl EPhnum {
-    pub fn new(raw: [u8; 2], endian: &Endian) -> Self {
-
-        let value = endian.read_u16(raw);
-        let as_hex = bytes_to_hex(&raw);
-
+impl<'a> EPhnum<'a> {
+    pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
         Self { 
-            raw, 
-            value,
-            as_hex
+            raw 
         }
     }
 }
 
-impl HeaderField for EPhnum {
-    fn describe(&self) -> String {
-        self.value.to_string()
+impl<'a> HeaderField for EPhnum<'a> {
+    type Value = u16;
+    fn describe(&self, endian: &Endian) -> String {
+        self.value(endian).to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+        endian.read_u16(*self.raw)
     }
 }
