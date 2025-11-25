@@ -1,6 +1,5 @@
-use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
 pub enum PTypeValue {
@@ -57,27 +56,24 @@ impl PTypeValue {
 }
 
 #[derive(Debug)]
-pub struct PType {
-    pub raw: [u8; 4],
-    pub value: PTypeValue,
-    pub as_hex: String,
+pub struct PType<'a> {
+    pub raw: Cow<'a, [u8; 4]>,
 }
 
-impl PType {
-    pub fn new(raw: [u8; 4], endian: &Endian) -> Self {
-        let as_hex = bytes_to_hex(&raw);
-        let value = PTypeValue::from_raw(raw, endian);
-
+impl<'a> PType<'a> {
+    pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
         Self {
             raw,
-            value,
-            as_hex,
         }
     }
 }
 
-impl HeaderField for PType {
-    fn describe(&self) -> String {
-        self.value.as_str().to_string()
+impl<'a> HeaderField for PType<'a> {
+    type Value = PTypeValue;
+    fn describe(&self, endian: &Endian) -> String {
+        self.value(endian).as_str().to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+        PTypeValue::from_raw(*self.raw, endian)
     }
 }

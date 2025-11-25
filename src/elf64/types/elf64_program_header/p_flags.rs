@@ -1,6 +1,5 @@
-use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
 pub enum PFlagsValue {
@@ -29,38 +28,29 @@ impl PFlagsValue {
 }
 
 #[derive(Debug)]
-pub struct PFlags {
-    pub raw: [u8; 4],
-    pub value: Vec<PFlagsValue>,
-    pub as_hex: String,
+pub struct PFlags<'a> {
+    pub raw: Cow<'a, [u8; 4]>,
 }
 
-impl PFlags {
-    pub fn new(raw: [u8; 4], endian: &Endian) -> Self {
-        let as_hex = bytes_to_hex(&raw);
-        let value = PFlagsValue::from_raw(raw, endian);
-
+impl<'a> PFlags<'a> {
+    pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
         Self { 
-            raw,
-            value,
-            as_hex,
+            raw
         }
     }
+}
 
-    pub fn value_as_string(&self) -> String {
-        if self.value.is_empty() {
+impl<'a> HeaderField for PFlags<'a> {
+    type Value = Vec<PFlagsValue>;
+    fn describe(&self, endian: &Endian) -> String {
+        let values = self.value(endian);
+        if values.is_empty() {
             "None".to_string()
         } else {
-            self.value.iter()
-                .map(|f| f.as_str())
-                .collect::<Vec<&str>>()
-                .join(" | ")
+            values.iter().map(|f| f.as_str()).collect::<Vec<_>>().join(" | ")
         }
     }
-}
-
-impl HeaderField for PFlags {
-    fn describe(&self) -> String {
-        self.value_as_string()
+    fn value(&self, endian: &Endian) -> Self::Value {
+        PFlagsValue::from_raw(*self.raw, endian)
     }
 }

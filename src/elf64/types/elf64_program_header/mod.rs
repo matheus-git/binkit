@@ -7,6 +7,8 @@ mod p_memsz;
 mod p_offset;
 mod p_vaddr;
 
+use std::borrow::Cow;
+
 use p_align::PAlign;
 use p_type::PType;
 use p_paddr::PPaddr;
@@ -16,46 +18,45 @@ use p_memsz::PMemsz;
 use p_offset::POffset;
 use p_vaddr::PVaddr;
 use super::super::LoadELF64ProgramHeader;
-use crate::utils::endian::Endian;
 
 #[derive(Debug)]
-pub struct Elf64ProgramHeader {
-    pub p_type: PType,
-    pub p_flags: PFlags,
-    pub p_offset: POffset,
-    pub p_vaddr: PVaddr,
-    pub p_paddr: PPaddr,
-    pub p_filesz: PFilesz,
-    pub p_memsz: PMemsz,
-    pub p_align: PAlign
+pub struct Elf64ProgramHeader<'a> {
+    pub p_type: PType<'a>,
+    pub p_flags: PFlags<'a>,
+    pub p_offset: POffset<'a>,
+    pub p_vaddr: PVaddr<'a>,
+    pub p_paddr: PPaddr<'a>,
+    pub p_filesz: PFilesz<'a>,
+    pub p_memsz: PMemsz<'a>,
+    pub p_align: PAlign<'a>
 }
 
-impl Elf64ProgramHeader {
-    pub fn new(load: &LoadELF64ProgramHeader, endian: &Endian) -> Self {
+impl<'a> Elf64ProgramHeader<'a> {
+    pub fn new(load: &'a LoadELF64ProgramHeader) -> Self {
         Self { 
-            p_type: PType::new(load.p_type, endian),
-            p_offset: POffset::new(load.p_offset, endian),
-            p_vaddr: PVaddr::new(load.p_vaddr, endian),
-            p_paddr: PPaddr::new(load.p_paddr, endian),
-            p_filesz: PFilesz::new(load.p_filesz, endian),
-            p_memsz: PMemsz::new(load.p_memsz, endian),
-            p_flags: PFlags::new(load.p_flags, endian),
-            p_align: PAlign::new(load.p_align, endian),
+            p_type: PType::new(Cow::Borrowed(&load.p_type)),
+            p_flags: PFlags::new(Cow::Borrowed(&load.p_flags)),
+            p_offset: POffset::new(Cow::Borrowed(&load.p_offset)),
+            p_vaddr: PVaddr::new(Cow::Borrowed(&load.p_vaddr)),
+            p_paddr: PPaddr::new(Cow::Borrowed(&load.p_paddr)),
+            p_filesz: PFilesz::new(Cow::Borrowed(&load.p_filesz)),
+            p_memsz: PMemsz::new(Cow::Borrowed(&load.p_memsz)),
+            p_align: PAlign::new(Cow::Borrowed(&load.p_align)),
         }
     }
 }
 
-impl From<&Elf64ProgramHeader> for Vec<u8> {
+impl<'a> From<&Elf64ProgramHeader<'a>> for Vec<u8> {
     fn from(h: &Elf64ProgramHeader) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
-        bytes.extend_from_slice(&h.p_type.raw);
-        bytes.extend_from_slice(&h.p_flags.raw);
-        bytes.extend_from_slice(&h.p_offset.raw);
-        bytes.extend_from_slice(&h.p_vaddr.raw);
-        bytes.extend_from_slice(&h.p_paddr.raw);
-        bytes.extend_from_slice(&h.p_filesz.raw);
-        bytes.extend_from_slice(&h.p_memsz.raw);
-        bytes.extend_from_slice(&h.p_align.raw);
+        bytes.extend_from_slice(&*h.p_type.raw);
+        bytes.extend_from_slice(&*h.p_flags.raw);
+        bytes.extend_from_slice(&*h.p_offset.raw);
+        bytes.extend_from_slice(&*h.p_vaddr.raw);
+        bytes.extend_from_slice(&*h.p_paddr.raw);
+        bytes.extend_from_slice(&*h.p_filesz.raw);
+        bytes.extend_from_slice(&*h.p_memsz.raw);
+        bytes.extend_from_slice(&*h.p_align.raw);
         bytes
     }
 }

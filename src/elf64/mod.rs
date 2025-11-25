@@ -31,15 +31,22 @@ use crate::utils::endian::Endian;
 use crate::utils::string_until_null::string_until_null;
 use crate::dto::disasm_dto::DisasmDTO;
 
-fn parse_program_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64ProgramHeader> {
-    let mut headers = Vec::with_capacity(elf_header.e_phnum.value(endian) as usize);
+fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64ProgramHeader<'a>> {
+    let phnum = elf_header.e_phnum.value(endian) as usize;
+    let phoff = elf_header.e_phoff.value(endian) as usize;
+    let phentsize = elf_header.e_phentsize.value(endian) as usize;
+    let mut headers = Vec::with_capacity(phnum);
 
-    for i in 0..elf_header.e_phnum.value(endian) as usize {
-        let start = elf_header.e_phoff.value(endian) as usize + i * elf_header.e_phentsize.value(endian) as usize;
-        let end = start + elf_header.e_phentsize.value(endian) as usize;
+    for i in 0..phnum {
+        let start = phoff + i * phentsize;
+        let end = start + phentsize;
+
+        if end > buf.len() {
+            break;
+        }
 
         let raw_header = LoadELF64ProgramHeader::from_bytes(&buf[start..end]);
-        headers.push(Elf64ProgramHeader::new(raw_header, endian));
+        headers.push(Elf64ProgramHeader::new(raw_header));
     }
 
     headers
@@ -75,7 +82,7 @@ const ALIGN: u64 = 0x1000;
 #[derive(Debug)]
 pub struct Elf64Binary<'a> {
     header: Elf64Header<'a>,
-    program_headers: Vec<Elf64ProgramHeader>,
+    program_headers: Vec<Elf64ProgramHeader<'a>>,
     section_headers: Vec<Elf64SectionHeader>,
     raw: Cow<'a, [u8]>
 }

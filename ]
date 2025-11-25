@@ -3,20 +3,26 @@ use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
 pub struct PMemsz<'a> {
-    pub raw: Cow<'a, [u8; 8]>,
+    pub raw: [u8; 8],
 }
 
-impl<'a> PMemsz<'a> {
-    pub fn new(raw: Cow<'a, [u8; 8]>) -> Self {
+impl PMemsz {
+    pub fn new(raw: [u8; 8], endian: &Endian) -> Self {
+
+        let as_hex = bytes_to_hex(&raw);
+        let value = format!("0x{:X}", endian.read_u64(raw));
+
         Self { 
             raw, 
+            value,
+            as_hex
         }
     }
 }
 
-impl<'a> HeaderField for PMemsz<'a> {
+impl HeaderField for PMemsz {
     type Value = String;
-    fn describe(&self, endian: &Endian) -> String {
+    fn describe(&self) -> String {
         self.value(endian)
     }
     fn value(&self, endian: &Endian) -> Self::Value {
