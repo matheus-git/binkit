@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]

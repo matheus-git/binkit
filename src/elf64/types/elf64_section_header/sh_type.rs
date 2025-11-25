@@ -1,6 +1,5 @@
-use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug, Clone)]
 pub enum ShTypeValue {
@@ -55,24 +54,24 @@ impl ShTypeValue {
 }
 
 #[derive(Debug)]
-pub struct ShType {
-    pub raw: [u8; 4],
-    pub value: ShTypeValue,
-    pub as_hex: String,
+pub struct ShType<'a> {
+    pub raw: Cow<'a, [u8; 4]>,
 }
 
-impl ShType {
-    pub fn new(raw: [u8; 4], endian: &Endian) -> Self {
-        let as_hex = bytes_to_hex(&raw);
-        let raw_value = endian.read_u32(raw);
-        let value = ShTypeValue::from_u32(raw_value);
-
-        Self { raw, value, as_hex }
+impl<'a> ShType<'a> {
+    pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
+        Self { 
+            raw, 
+        }
     }
 }
 
-impl HeaderField for ShType {
-    fn describe(&self) -> String {
-        self.value.as_str().to_string()
+impl<'a> HeaderField for ShType<'a> {
+    type Value = ShTypeValue;
+    fn describe(&self, endian: &Endian) -> String {
+        self.value(endian).as_str().to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+        ShTypeValue::from_u32(endian.read_u32(*self.raw))
     }
 }

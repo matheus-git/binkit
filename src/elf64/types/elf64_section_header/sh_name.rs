@@ -1,36 +1,31 @@
-use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
-pub struct ShName {
-    pub raw: [u8; 4],
-    pub value: u32,
-    pub as_hex: String,
-    pub name: String
+pub struct ShName<'a> {
+    pub raw: Cow<'a, [u8; 4]>,
+    pub name: Cow<'a , String>
 }
 
-impl ShName {
-    pub fn new(raw: [u8; 4], endian: &Endian) -> Self {
-
-        let as_hex = bytes_to_hex(&raw);
-        let value = endian.read_u32(raw);
-
+impl<'a> ShName<'a> {
+    pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
         Self { 
             raw, 
-            value,
-            as_hex,
-            name: String::new()
+            name: Cow::Owned(String::new())
         }
     }
 
     pub fn update_name(&mut self, name: String){
-        self.name = name;
+        self.name = Cow::Owned(name);
     }
 }
 
-impl HeaderField for ShName {
-    fn describe(&self) -> String {
-        self.name.clone()
+impl<'a> HeaderField for ShName<'a> {
+    type Value = u32;
+    fn describe(&self, _endian: &Endian) -> String {
+        self.name.to_string()
     }
-}   
+    fn value(&self, endian: &Endian) -> Self::Value {
+        endian.read_u32(*self.raw)
+    }
+} 

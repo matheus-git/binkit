@@ -28,6 +28,7 @@ use crate::elf64::check_inject::CheckInjectBinary;
 use crate::traits::binary::Binary;
 use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;
+use crate::utils::parse_hex::parse_hex_to_u64;
 use crate::utils::string_until_null::string_until_null;
 use crate::dto::disasm_dto::DisasmDTO;
 
@@ -52,15 +53,22 @@ fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
     headers
 }
 
-fn parse_section_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64SectionHeader> {
-    let mut headers = Vec::with_capacity(elf_header.e_shnum.value(endian) as usize);
+fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64SectionHeader<'a>> {
+    let shnum = elf_header.e_shnum.value(endian) as usize;
+    let shoff = elf_header.e_shoff.value(endian) as usize;
+    let shentsize = elf_header.e_shentsize.value(endian) as usize;
+    let mut headers = Vec::with_capacity(shnum);
 
-    for i in 0..elf_header.e_shnum.value(endian) as usize {
-        let start = elf_header.e_shoff.value(endian) as usize + i * elf_header.e_shentsize.value(endian) as usize;
-        let end = start + elf_header.e_shentsize.value(endian) as usize;
+    for i in 0..shnum {
+        let start = shoff + i * shentsize;
+        let end = start + shentsize;
+
+        if end > buf.len() {
+            break;
+        }
 
         let raw_header = LoadELF64SectionHeader::from_bytes(&buf[start..end]);
-        headers.push(Elf64SectionHeader::new(raw_header, endian));
+        headers.push(Elf64SectionHeader::new(raw_header));
     }
 
     headers
@@ -68,11 +76,11 @@ fn parse_section_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) 
 
 fn resolve_section_name(section_headers: &mut Vec<Elf64SectionHeader>, buf: &[u8], elf_header: &Elf64Header, endian: &Endian){
     let strtab_section = &section_headers[elf_header.e_shstrndx.value(endian) as usize ];
-    let strtab_section_offset = endian.read_u64(strtab_section.sh_offset.raw);
+    let strtab_section_offset = strtab_section.sh_offset.value(endian);
 
     for section in section_headers {
-        let name_index = section.sh_name.value;
-        let name = string_until_null(&buf[(strtab_section_offset as usize + name_index as usize)..]);
+        let name_index = section.sh_name.value(endian);
+        let name = string_until_null(&buf[(parse_hex_to_u64(strtab_section_offset) as usize + name_index as usize)..]);
         section.sh_name.update_name(name.to_string());
     }
 }
@@ -83,7 +91,7 @@ const ALIGN: u64 = 0x1000;
 pub struct Elf64Binary<'a> {
     header: Elf64Header<'a>,
     program_headers: Vec<Elf64ProgramHeader<'a>>,
-    section_headers: Vec<Elf64SectionHeader>,
+    section_headers: Vec<Elf64SectionHeader<'a>>,
     raw: Cow<'a, [u8]>
 }
 
