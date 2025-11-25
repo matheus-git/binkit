@@ -1,7 +1,6 @@
 use std::fmt;
-use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 
 #[derive(Debug)]
 pub enum EMachineValue {
@@ -59,16 +58,25 @@ impl fmt::Display for EMachineValue {
 }
 
 #[derive(Debug)]
-pub struct EMachine {
-    pub raw: [u8; 2],
-    pub value: EMachineValue,
-    pub as_hex: String
+pub struct EMachine<'a> {
+    pub raw: Cow<'a, [u8; 2]>,
 }
 
-impl EMachine {
-    pub fn new(raw: [u8; 2], endian: &Endian) -> Self {
+impl<'a> EMachine<'a> {
+    pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
+        Self { 
+            raw, 
+        }
+    }
+}
 
-        let value = match endian.read_u16(raw) {
+impl<'a> HeaderField for EMachine<'a> {
+    type Value = EMachineValue;
+    fn describe(&self, endian: &Endian) -> String {
+        self.value(endian).as_str().to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+       match endian.read_u16(*self.raw) {
             0 => EMachineValue::None,
             1 => EMachineValue::M32,
             2 => EMachineValue::Sparc,
@@ -89,25 +97,11 @@ impl EMachine {
             62 => EMachineValue::X86_64,
             75 => EMachineValue::Vax,
             _ => EMachineValue::None,
-        };
-
-        let as_hex = bytes_to_hex(&raw);
-
-        Self { 
-            raw, 
-            value,
-            as_hex
-        }
+        }    
     }
 }
 
-impl HeaderField for EMachine {
-    fn describe(&self) -> String {
-        self.value.as_str().to_string()
-    }
-}
-
-impl From<&EMachine> for Vec<u8> {
+impl<'a> From<&EMachine<'a>> for Vec<u8> {
     fn from(h: &EMachine) -> Vec<u8> {
         h.raw.to_vec()
     }

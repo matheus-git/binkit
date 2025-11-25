@@ -1,6 +1,6 @@
-use crate::traits::header_field::HeaderField;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
 
 #[derive(Debug)]
 enum EiClass {
@@ -76,19 +76,14 @@ impl EiOsabi {
 }
 
 #[derive(Debug)]
-pub struct EIdent {
-    pub raw: [u8; 16],
-    pub as_hex: String
+pub struct EIdent<'a> {
+    pub raw: Cow<'a, [u8; 16]>,
 }
 
-impl EIdent {
-    pub fn new(raw: [u8; 16]) -> Self {
-
-        let as_hex = bytes_to_hex(&raw);
-
+impl<'a> EIdent<'a> {
+    pub fn new(raw: Cow<'a, [u8; 16]>) -> Self {
         Self { 
             raw, 
-            as_hex
         }
     }
 
@@ -140,20 +135,24 @@ impl EIdent {
     }
 }
 
-impl HeaderField for EIdent {
-    fn describe(&self) -> String {
+impl<'a> HeaderField for EIdent<'a> {
+    type Value = Option<()>;
+    fn describe(&self, _endian: &Endian) -> String {
         format!(
             "Magic: {}\nClass: {}\nData: {}\nVersion: {:?}\nOS/ABI: {}",
-            self.as_hex,
+            bytes_to_hex(&*self.raw),
             self.ei_class().as_str(),
             self.ei_data().as_str(),
             self.ei_version(),
             self.ei_osabi().as_str()
         )
     }
+    fn value(&self, _endian: &Endian) -> Self::Value {
+        None
+    }
 }
 
-impl From<&EIdent> for Vec<u8> {
+impl<'a> From<&EIdent<'a>> for Vec<u8> {
     fn from(h: &EIdent) -> Vec<u8> {
         h.raw.to_vec()
     }

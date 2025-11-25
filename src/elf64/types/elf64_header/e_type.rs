@@ -1,6 +1,5 @@
-use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
-use crate::utils::endian::Endian;
+use std::borrow::Cow;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 use std::fmt;
 
 #[derive(Debug)]
@@ -31,40 +30,35 @@ impl fmt::Display for ETypeValue {
 }
 
 #[derive(Debug)]
-pub struct EType {
-    pub raw: [u8; 2],
-    pub value: ETypeValue,
-    pub as_hex: String
+pub struct EType<'a> {
+    pub raw: Cow<'a, [u8; 2]>,
 }
 
-impl EType {
-    pub fn new(raw: [u8; 2], endian: &Endian) -> Self {
+impl<'a> EType<'a> {
+    pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
+        Self { 
+            raw
+        }
+    }
+}
 
-        let value = match endian.read_u16(raw) {
+impl<'a> HeaderField for EType<'a> {
+    type Value = ETypeValue;
+    fn describe(&self,endian: &Endian) -> String {
+        self.value(endian).as_str().to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+        match endian.read_u16(*self.raw) {
             1 => ETypeValue::Rel,
             2 => ETypeValue::Exec,
             3 => ETypeValue::Dyn,
             4 => ETypeValue::Core,
             _ => ETypeValue::None
-        };
-
-        let as_hex = bytes_to_hex(&raw);
-
-        Self { 
-            raw,
-            value,
-            as_hex
         }
     }
 }
 
-impl HeaderField for EType {
-    fn describe(&self) -> String {
-        self.value.as_str().to_string()
-    }
-}
-
-impl From<&EType> for Vec<u8> {
+impl<'a> From<&EType<'a>> for Vec<u8> {
     fn from(h: &EType) -> Vec<u8> {
         h.raw.to_vec()
     }

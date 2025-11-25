@@ -26,16 +26,17 @@ use crate::dto::inject_dto::InjectDTO;
 use crate::dto::update_dto::UpdateDTO;
 use crate::elf64::check_inject::CheckInjectBinary;
 use crate::traits::binary::Binary;
+use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;
 use crate::utils::string_until_null::string_until_null;
 use crate::dto::disasm_dto::DisasmDTO;
 
 fn parse_program_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64ProgramHeader> {
-    let mut headers = Vec::with_capacity(elf_header.e_phnum.value as usize);
+    let mut headers = Vec::with_capacity(elf_header.e_phnum.value(endian) as usize);
 
-    for i in 0..elf_header.e_phnum.value as usize {
-        let start = elf_header.e_phoff.value as usize + i * elf_header.e_phentsize.value as usize;
-        let end = start + elf_header.e_phentsize.value as usize;
+    for i in 0..elf_header.e_phnum.value(endian) as usize {
+        let start = elf_header.e_phoff.value(endian) as usize + i * elf_header.e_phentsize.value(endian) as usize;
+        let end = start + elf_header.e_phentsize.value(endian) as usize;
 
         let raw_header = LoadELF64ProgramHeader::from_bytes(&buf[start..end]);
         headers.push(Elf64ProgramHeader::new(raw_header, endian));
@@ -45,11 +46,11 @@ fn parse_program_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) 
 }
 
 fn parse_section_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64SectionHeader> {
-    let mut headers = Vec::with_capacity(elf_header.e_shnum.value as usize);
+    let mut headers = Vec::with_capacity(elf_header.e_shnum.value(endian) as usize);
 
-    for i in 0..elf_header.e_shnum.value as usize {
-        let start = elf_header.e_shoff.value as usize + i * elf_header.e_shentsize.value as usize;
-        let end = start + elf_header.e_shentsize.value as usize;
+    for i in 0..elf_header.e_shnum.value(endian) as usize {
+        let start = elf_header.e_shoff.value(endian) as usize + i * elf_header.e_shentsize.value(endian) as usize;
+        let end = start + elf_header.e_shentsize.value(endian) as usize;
 
         let raw_header = LoadELF64SectionHeader::from_bytes(&buf[start..end]);
         headers.push(Elf64SectionHeader::new(raw_header, endian));
@@ -59,7 +60,7 @@ fn parse_section_headers(buf: &[u8], elf_header: &Elf64Header, endian: &Endian) 
 }
 
 fn resolve_section_name(section_headers: &mut Vec<Elf64SectionHeader>, buf: &[u8], elf_header: &Elf64Header, endian: &Endian){
-    let strtab_section = &section_headers[elf_header.e_shstrndx.value as usize ];
+    let strtab_section = &section_headers[elf_header.e_shstrndx.value(endian) as usize ];
     let strtab_section_offset = endian.read_u64(strtab_section.sh_offset.raw);
 
     for section in section_headers {

@@ -1,5 +1,5 @@
 use crate::traits::header_field::HeaderField;
-use crate::utils::bytes_to_hex::bytes_to_hex;
+use std::borrow::Cow;
 use crate::utils::endian::Endian;
 use std::fmt;
 
@@ -26,32 +26,27 @@ impl fmt::Display for EVersionValue {
 
 
 #[derive(Debug)]
-pub struct EVersion {
-    pub raw: [u8; 4],
-    pub value: EVersionValue,
-    pub as_hex: String
+pub struct EVersion<'a> {
+    pub raw: Cow<'a, [u8; 4]>,
 }
 
-impl EVersion {
-    pub fn new(raw: [u8; 4], endian: &Endian) -> Self {
-
-        let value = match endian.read_u32(raw) {
-            1 => EVersionValue::Current,
-            _ => EVersionValue::None
-        };
-
-        let as_hex = bytes_to_hex(&raw);
-        
+impl<'a> EVersion<'a> {
+    pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
         Self { 
             raw, 
-            value,
-            as_hex
         }
     }
 }
 
-impl HeaderField for EVersion {
-    fn describe(&self) -> String {
-        self.value.as_str().to_string()
+impl<'a> HeaderField for EVersion<'a> {
+    type Value = EVersionValue;
+    fn describe(&self, endian: &Endian) -> String {
+        self.value(endian).as_str().to_string()
+    }
+    fn value(&self, endian: &Endian) -> Self::Value {
+        match endian.read_u32(*self.raw) {
+            1 => EVersionValue::Current,
+            _ => EVersionValue::None
+        }
     }
 }
