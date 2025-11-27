@@ -123,32 +123,32 @@ fn main() -> Result<()> {
             //    .context("Inject failed")?;
         },
         Commands::CheckInject { file, return_address } => {
-            //raw = load_file(file)?;
-            //binary = Elf64Binary::new(&raw)?;
+            raw = load_file(file)?;
+            binary = Elf64Binary::new(&raw)?;
 
-            //let dto = CheckInjectDTO {
-            //    file,
-            //    return_address: return_address.as_deref()
-            //};
+            let dto = CheckInjectDTO {
+                file,
+                return_address: return_address.as_deref()
+            };
 
-            //let check_inject = binary.check_inject(dto);
+            let check_inject = binary.check_inject(dto);
 
-            //check_inject.execute()
-            //    .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+            check_inject.execute()
+                .context("Check inject command failed")?;
         },
         Commands::Disasm { file, section } => {
-           // raw = load_file(file)?;
-           // binary = Elf64Binary::new(&raw)?;
+            raw = load_file(file)?;
+            binary = Elf64Binary::new(&raw)?;
 
-           // let dto = DisasmDTO {
-           //     file,
-           //     section: section.as_deref(),
-           // };
+            let dto = DisasmDTO {
+                file,
+                section: section.as_deref(),
+            };
 
-           // let disasm = binary.disasm(dto);
+            let disasm = binary.disasm(dto);
 
-           // disasm.execute()
-           //     .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+            disasm.execute()
+                .context("Disasm command failed")?;
         },
         Commands::Info { file, header, programs, sections } => {
             raw = load_file(file)?;
@@ -164,7 +164,7 @@ fn main() -> Result<()> {
             let info = binary.info(dto);
 
             info.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+                .context("Info command failed")?;
         },
         Commands::Update { file, entry, output } => {
             //raw = load_file(file)?;

@@ -11,10 +11,10 @@ pub struct UpdateBinary<'a> {
 
 impl<'a> UpdateBinary<'a> {
     pub fn set_entry(&mut self, hex_entry: &str) -> Result<(), ParseIntError> {
-        let endian = self.binary.endian();
+        //let endian = self.binary.endian();
 
-        let entry = u64::from_str_radix(hex_entry.trim_start_matches("0x"), 16)?;
-        self.binary.header.e_entry.raw = endian.to_bytes_u64(entry);
+        //let entry = u64::from_str_radix(hex_entry.trim_start_matches("0x"), 16)?;
+        //self.binary.header.e_entry.raw = endian.to_bytes_u64(entry);
         Ok(())
     }
 
@@ -23,7 +23,8 @@ impl<'a> UpdateBinary<'a> {
 
         if let Some(entry) = self.dto.entry {
             self.set_entry(entry)?; 
-            let bytes: Vec<u8> = (&*self.binary).into();
+            //let bytes: Vec<u8> = (&*self.binary).into();
+            let bytes: Vec<u8> = Vec::new();
             save_file(final_output, &bytes)?;
             println!("Output written to: {}", final_output);
         }

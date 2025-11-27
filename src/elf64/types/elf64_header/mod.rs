@@ -30,7 +30,7 @@ use e_shstrndx::EShstrndx;
 use e_type::EType;
 use e_version::EVersion;
 
-use crate::elf64::loaders::load_elf64_header::LoadELF64Header;
+use crate::{elf64::loaders::load_elf64_header::LoadELF64Header, traits::header_field::HeaderField};
 
 #[derive(Debug)]
 pub struct Elf64Header<'a> {
@@ -71,8 +71,8 @@ impl<'a> Elf64Header<'a> {
     }
 }
 
-impl<'a> From<Elf64Header<'a>> for Vec<u8> {
-    fn from(h: Elf64Header<'a>) -> Vec<u8> {
+impl<'a> From<&Elf64Header<'a>> for Vec<u8> {
+    fn from(h: &Elf64Header<'a>) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&*h.e_ident.raw);
         bytes.extend_from_slice(&*h.e_type.raw);
