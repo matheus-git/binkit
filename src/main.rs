@@ -9,7 +9,7 @@ use dto::disasm_dto::DisasmDTO;
 
 use std::fs;
 
-use clap::{Parser, Error, Subcommand};
+use clap::{Parser, Subcommand};
 use clap::error::ErrorKind;
 use anyhow::{Result, Context};
 
@@ -105,51 +105,54 @@ fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Inject { file, address, return_address, inject, output, section } => {
-            raw = load_file(file)?;
-            binary = Elf64Binary::new(&raw);
+            //raw = load_file(file)?;
+            //binary = Elf64Binary::new(&raw)?;
 
-            let dto = InjectDTO {
-                file,
-                inject,
-                address: address.as_deref(),
-                section: section.as_deref(),
-                return_address: return_address.as_deref(),
-                output
-            };
+            //let dto = InjectDTO {
+            //    file,
+            //    inject,
+            //    address: address.as_deref(),
+            //    section: section.as_deref(),
+            //    return_address: return_address.as_deref(),
+            //    output
+            //};
 
-            let mut inject = binary.inject(dto);
+            //let mut inject = binary.inject(dto);
 
-            inject.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+            //inject.execute()
+            //    .context("Inject failed")?;
         },
         Commands::CheckInject { file, return_address } => {
-            binary = load_file(file)?;
+            //raw = load_file(file)?;
+            //binary = Elf64Binary::new(&raw)?;
 
-            let dto = CheckInjectDTO {
-                file,
-                return_address: return_address.as_deref()
-            };
+            //let dto = CheckInjectDTO {
+            //    file,
+            //    return_address: return_address.as_deref()
+            //};
 
-            let check_inject = binary.check_inject(dto);
+            //let check_inject = binary.check_inject(dto);
 
-            check_inject.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+            //check_inject.execute()
+            //    .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::Disasm { file, section } => {
-            binary = load_file(file)?;
+           // raw = load_file(file)?;
+           // binary = Elf64Binary::new(&raw)?;
 
-            let dto = DisasmDTO {
-                file,
-                section: section.as_deref(),
-            };
+           // let dto = DisasmDTO {
+           //     file,
+           //     section: section.as_deref(),
+           // };
 
-            let disasm = binary.disasm(dto);
+           // let disasm = binary.disasm(dto);
 
-            disasm.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+           // disasm.execute()
+           //     .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::Info { file, header, programs, sections } => {
-            binary = load_file(file)?;
+            raw = load_file(file)?;
+            binary = Elf64Binary::new(&raw)?;
 
             let dto = InfoDTO {
                 file, 
@@ -164,18 +167,19 @@ fn main() -> Result<()> {
                 .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         },
         Commands::Update { file, entry, output } => {
-            binary = load_file(file)?;
+            //raw = load_file(file)?;
+            //binary = Elf64Binary::new(&raw)?;
 
-            let dto = UpdateDTO {
-                file,
-                entry: entry.as_deref(),
-                output: output.as_deref()
-            };
+            //let dto = UpdateDTO {
+            //    file,
+            //    entry: entry.as_deref(),
+            //    output: output.as_deref()
+            //};
 
-            let mut update = binary.update(dto);
+            //let mut update = binary.update(dto);
 
-            update.execute()
-                .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+            //update.execute()
+            //    .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
         }
     }
 

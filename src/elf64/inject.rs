@@ -2,11 +2,11 @@ use crate::dto::inject_dto::InjectDTO;
 use crate::elf64::{Elf64Binary, ALIGN};
 use crate::utils::parse_hex::parse_hex_to_u64;
 use crate::utils::save_file::save_file;
-use std::error::Error;
+use anyhow::{Result, Context};
 use std::fs;
 
 pub struct InjectBinary<'a> {
-    pub binary: &'a mut Elf64Binary,
+    pub binary: &'a mut Elf64Binary<'a>,
     pub dto: InjectDTO<'a>
 }
 
@@ -79,7 +79,7 @@ impl<'a> InjectBinary<'a> {
         injected
     }
 
-    pub fn execute(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn execute(&mut self) -> Result<()> {
         let bytes = fs::read(self.dto.inject)?; 
 
         let address = self

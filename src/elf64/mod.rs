@@ -8,6 +8,7 @@ pub mod check_inject;
 pub mod inject;
 
 use std::borrow::Cow;
+use std::usize;
 use disasm::DisasmBinary;
 use update::UpdateBinary;
 use info::InfoBinary;
@@ -32,10 +33,14 @@ use crate::utils::endian::Endian;
 use crate::utils::read_cstring::read_cstring;
 use crate::dto::disasm_dto::DisasmDTO;
 
-fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64ProgramHeader<'a>> {
-    let phnum = elf_header.e_phnum.value(endian) as usize;
-    let phoff = elf_header.e_phoff.value(endian) as usize;
-    let phentsize = elf_header.e_phentsize.value(endian) as usize;
+fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Result<Vec<Elf64ProgramHeader<'a>>> {
+    let phnum = usize::try_from(elf_header.e_phnum.value(endian))
+        .context("Failed to read the number of program headers")?;
+    let phoff = usize::try_from(elf_header.e_phoff.value(endian))
+        .context("Failed to read the program header offset")?;
+    let phentsize = usize::try_from(elf_header.e_phentsize.value(endian))
+        .context("Failed to read the program header entry size")?;
+
     let mut headers = Vec::with_capacity(phnum);
 
     for i in 0..phnum {
@@ -50,13 +55,16 @@ fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
         headers.push(Elf64ProgramHeader::new(raw_header));
     }
 
-    headers
+    Ok(headers)
 }
 
-fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64SectionHeader<'a>> {
-    let shnum = elf_header.e_shnum.value(endian) as usize;
-    let shoff = elf_header.e_shoff.value(endian) as usize;
-    let shentsize = elf_header.e_shentsize.value(endian) as usize;
+fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Result<Vec<Elf64SectionHeader<'a>>> {
+    let shnum = usize::try_from(elf_header.e_shnum.value(endian))
+        .context("Failed to read the number of section headers")?;
+    let shoff = usize::try_from(elf_header.e_shoff.value(endian))
+        .context("Failed to read the section header offset")?;
+    let shentsize = usize::try_from(elf_header.e_shentsize.value(endian))
+        .context("Failed to read the section header entry size")?;
     let mut headers = Vec::with_capacity(shnum);
 
     for i in 0..shnum {
@@ -71,7 +79,7 @@ fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
         headers.push(Elf64SectionHeader::new(raw_header));
     }
 
-    headers
+    Ok(headers)
 }
 
 pub const ALIGN: u64 = 0x1000;
@@ -85,33 +93,43 @@ pub struct Elf64Binary<'a> {
 }
 
 impl<'a> Elf64Binary<'a> {
-    pub fn new(buf: &'a [u8]) -> Self{
+    pub fn new(buf: &'a [u8]) -> Result<Self> {
         let load_elf_header =  LoadELF64Header::from_bytes(buf);
         let elf_header = Elf64Header::new(load_elf_header);
         let endian: Endian = elf_header.e_ident.endian();
         
-        let program_headers = parse_program_headers(buf, &elf_header, &endian);
-        let section_headers = parse_section_headers(buf, &elf_header, &endian);
+        let program_headers = parse_program_headers(buf, &elf_header, &endian)?;
+        let section_headers = parse_section_headers(buf, &elf_header, &endian)?;
 
-        Self { 
-            header: elf_header, 
-            program_headers,
-            section_headers,
-            raw: Cow::Borrowed(buf)
-        }
+        Ok(
+            Self { 
+                header: elf_header, 
+                program_headers,
+                section_headers,
+                raw: Cow::Borrowed(buf)
+            }
+        )
     }
 
     pub fn resolve_section_name(&self, section: &Elf64SectionHeader, endian: &Endian) -> Result<&str>{
         let strtab_section_index = usize::try_from(self.header.e_shstrndx.value(endian))
             .context("strtab section does not fit in usize")?;
-        let strtab_section = &self.section_headers[strtab_section_index];
+        let strtab_section = self.section_headers
+            .get(strtab_section_index)
+            .context("String table section index is out of bounds")?;
+
         let strtab_section_offset = usize::try_from(strtab_section.sh_offset.value(endian))
             .context("strtab offset does not fit in usize")?;
-
         let sh_name_index = usize::try_from(section.sh_name.value(endian))
             .context("Section name index does not fit in usize")?;
 
-        let name = read_cstring(&self.raw[strtab_section_offset+sh_name_index..])
+        let start = strtab_section_offset+sh_name_index;
+
+        let raw_name = &self.raw
+            .get(start..)
+            .context("Section name offset is outside the file bounds")?;
+
+        let name = read_cstring(raw_name)
             .context("Invalid section name")?;
         Ok(name)
     }
