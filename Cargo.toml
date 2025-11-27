@@ -14,6 +14,7 @@ plain = "0.2.3"
 tabled = "0.20.0"
 clap = { version = "4.3", features = ["derive"] }
 capstone = "0.13.0"
+anyhow = "1.0.100"
 
 [profile.release]
 opt-level = "z"

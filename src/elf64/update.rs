@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use std::error::Error;
 
 pub struct UpdateBinary<'a> {
-    pub binary: &'a mut Elf64Binary,
+    pub binary: &'a mut Elf64Binary<'a>,
     pub dto: UpdateDTO<'a>
 }
 

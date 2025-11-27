@@ -11,6 +11,7 @@ use std::fs;
 
 use clap::{Parser, Error, Subcommand};
 use clap::error::ErrorKind;
+use anyhow::{Result, Context};
 
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::info_dto::InfoDTO;
@@ -92,21 +93,20 @@ enum Commands {
     }
 }
 
-fn load_file(file: &str) -> Result<Elf64Binary, Error> {
-    let bytes: Vec<u8> = fs::read(file)?;
-
-    Ok(Elf64Binary::new(&bytes))
-}
-
-
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    fn load_file(file: &str) -> Result<Vec<u8>> {
+        Ok(fs::read(file)?)
+    }
+
+    let mut raw: Vec<u8>;
     let mut binary: Elf64Binary;
 
     match &cli.command {
         Commands::Inject { file, address, return_address, inject, output, section } => {
-            binary = load_file(file)?;
+            raw = load_file(file)?;
+            binary = Elf64Binary::new(&raw);
 
             let dto = InjectDTO {
                 file,

@@ -15,11 +15,11 @@ impl<'a> ShOffset<'a> {
 }
 
 impl<'a> HeaderField for ShOffset<'a> {
-    type Value = String;
+    type Value = u64;
     fn describe(&self, endian: &Endian) -> String {
-        self.value(endian)
+        format!("0x{:X}", endian.read_u64(*self.raw))
     }
     fn value(&self, endian: &Endian) -> Self::Value {
-        format!("0x{:X}", endian.read_u64(*self.raw))
+        endian.read_u64(*self.raw)
     }
 }

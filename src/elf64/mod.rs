@@ -16,6 +16,7 @@ use std::cmp::max;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
 use loaders::load_elf64_section_header::LoadELF64SectionHeader;
+use anyhow::{Result, Context};
 
 use types::elf64_header::Elf64Header;
 use types::elf64_program_header::Elf64ProgramHeader;
@@ -28,8 +29,7 @@ use crate::elf64::check_inject::CheckInjectBinary;
 use crate::traits::binary::Binary;
 use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;
-use crate::utils::parse_hex::parse_hex_to_u64;
-use crate::utils::string_until_null::string_until_null;
+use crate::utils::read_cstring::read_cstring;
 use crate::dto::disasm_dto::DisasmDTO;
 
 fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Vec<Elf64ProgramHeader<'a>> {
@@ -74,18 +74,7 @@ fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
     headers
 }
 
-fn resolve_section_name(section_headers: &mut Vec<Elf64SectionHeader>, buf: &[u8], elf_header: &Elf64Header, endian: &Endian){
-    let strtab_section = &section_headers[elf_header.e_shstrndx.value(endian) as usize ];
-    let strtab_section_offset = strtab_section.sh_offset.value(endian);
-
-    for section in section_headers {
-        let name_index = section.sh_name.value(endian);
-        let name = string_until_null(&buf[(parse_hex_to_u64(strtab_section_offset) as usize + name_index as usize)..]);
-        section.sh_name.update_name(name.to_string());
-    }
-}
-
-const ALIGN: u64 = 0x1000;
+pub const ALIGN: u64 = 0x1000;
 
 #[derive(Debug)]
 pub struct Elf64Binary<'a> {
@@ -102,9 +91,7 @@ impl<'a> Elf64Binary<'a> {
         let endian: Endian = elf_header.e_ident.endian();
         
         let program_headers = parse_program_headers(buf, &elf_header, &endian);
-        let mut section_headers = parse_section_headers(buf, &elf_header, &endian);
-
-        resolve_section_name(&mut section_headers, buf, &elf_header, &endian);
+        let section_headers = parse_section_headers(buf, &elf_header, &endian);
 
         Self { 
             header: elf_header, 
@@ -114,39 +101,54 @@ impl<'a> Elf64Binary<'a> {
         }
     }
 
+    pub fn resolve_section_name(&self, section: &Elf64SectionHeader, endian: &Endian) -> Result<&str>{
+        let strtab_section_index = usize::try_from(self.header.e_shstrndx.value(endian))
+            .context("strtab section does not fit in usize")?;
+        let strtab_section = &self.section_headers[strtab_section_index];
+        let strtab_section_offset = usize::try_from(strtab_section.sh_offset.value(endian))
+            .context("strtab offset does not fit in usize")?;
+
+        let sh_name_index = usize::try_from(section.sh_name.value(endian))
+            .context("Section name index does not fit in usize")?;
+
+        let name = read_cstring(&self.raw[strtab_section_offset+sh_name_index..])
+            .context("Invalid section name")?;
+        Ok(name)
+    }
+
     pub fn endian(&self) -> Endian {
         self.header.e_ident.endian()
     }
 
-    pub fn disasm(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
+    pub fn disasm(&self, dto: DisasmDTO<'a>) -> DisasmBinary {
         DisasmBinary {
             binary: self,
             dto
         }
     }
 
-    pub fn update(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary<'a> {
+    pub fn update(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary {
         UpdateBinary {
             binary: self,
             dto
         }
     }
 
-    pub fn info(&'a self, dto: InfoDTO<'a>) -> InfoBinary<'a> {
+    pub fn info(&self, dto: InfoDTO) -> InfoBinary {
         InfoBinary { 
             binary: self, 
             dto 
         }
     }
 
-    pub fn check_inject(&'a self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary<'a> {
+    pub fn check_inject(&self, dto: CheckInjectDTO) -> CheckInjectBinary {
         CheckInjectBinary { 
             binary: self, 
             dto 
         }
     }
 
-    pub fn inject(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary<'a> {
+    pub fn inject(&mut self, dto: InjectDTO) -> InjectBinary {
         InjectBinary { 
             binary: self, 
             dto 
@@ -155,7 +157,7 @@ impl<'a> Elf64Binary<'a> {
 
     pub fn entry(&self) -> u64 {
         let endian = self.endian();
-        endian.read_u64(self.header.e_entry.raw)
+        endian.read_u64(*self.header.e_entry.raw)
     }
 
     pub fn get_address_to_inject(&self) -> u64 {
@@ -163,10 +165,10 @@ impl<'a> Elf64Binary<'a> {
         let endian = self.endian();
         let mut higher_addr: u64 = 0;
         for program in program_headers {
-            let initial_address = endian.read_u64(program.p_vaddr.raw);
+            let initial_address = endian.read_u64(*program.p_vaddr.raw);
             let memsz = max(
-                endian.read_u64(program.p_memsz.raw),
-                endian.read_u64(program.p_filesz.raw)
+                endian.read_u64(*program.p_memsz.raw),
+                endian.read_u64(*program.p_filesz.raw)
             );
             let final_address = initial_address + memsz;
             if final_address > higher_addr {
@@ -177,7 +179,8 @@ impl<'a> Elf64Binary<'a> {
     }
 
     pub fn calculate_new_addr(&self, addr: u64) -> u64 {
-        let bytes: Vec<u8> = self.into();
+        //let bytes: Vec<u8> = self.into();
+        let bytes: Vec<u8> = Vec::new();
         let offset = bytes.len() as u64;
         let delta = (offset % ALIGN + ALIGN - (addr % ALIGN)) % ALIGN;
         addr + delta
@@ -190,10 +193,10 @@ impl<'a> Elf64Binary<'a> {
 
 }
 
-impl Binary for Elf64Binary {
-    type Header = Elf64Header;
-    type ProgramHeader = Elf64ProgramHeader;
-    type SectionHeader = Elf64SectionHeader;
+impl<'a> Binary for Elf64Binary<'a> {
+    type Header = Elf64Header<'a>;
+    type ProgramHeader = Elf64ProgramHeader<'a>;
+    type SectionHeader = Elf64SectionHeader<'a>;
 
     fn get_header(&self) -> &Self::Header {
         &self.header
@@ -208,48 +211,49 @@ impl Binary for Elf64Binary {
     }
 }
 
-impl From<&Elf64Binary> for Vec<u8> {
-    fn from(h: &Elf64Binary) -> Vec<u8> {
-        let mut bytes = h.raw.clone();
-
-        let header_bytes: Vec<u8> = (&h.header).into();
-        bytes[0..header_bytes.len()].copy_from_slice(&header_bytes);
-
-        for (i, ph) in h.program_headers.iter().enumerate() {
-            let ph_bytes: Vec<u8> = ph.into();
-            let offset = h.header.e_phoff.value as usize + i * h.header.e_phentsize.value as usize;
-            bytes[offset..offset + ph_bytes.len()].copy_from_slice(&ph_bytes);
-        }
-
-        for (i, sh) in h.section_headers.iter().enumerate() {
-            let sh_bytes: Vec<u8> = sh.into();
-            let offset = h.header.e_shoff.value as usize + i * h.header.e_shentsize.value as usize;
-            bytes[offset..offset + sh_bytes.len()].copy_from_slice(&sh_bytes);
-        }
-
-        bytes
-    }
-}
-
-impl From<&mut Elf64Binary> for Vec<u8> {
-    fn from(h: &mut Elf64Binary) -> Vec<u8> {
-        let mut bytes = h.raw.clone();
-
-        let header_bytes: Vec<u8> = (&h.header).into();
-        bytes[0..header_bytes.len()].copy_from_slice(&header_bytes);
-
-        for (i, ph) in h.program_headers.iter().enumerate() {
-            let ph_bytes: Vec<u8> = ph.into();
-            let offset = h.header.e_phoff.value as usize + i * h.header.e_phentsize.value as usize;
-            bytes[offset..offset + ph_bytes.len()].copy_from_slice(&ph_bytes);
-        }
-
-        for (i, sh) in h.section_headers.iter().enumerate() {
-            let sh_bytes: Vec<u8> = sh.into();
-            let offset = h.header.e_shoff.value as usize + i * h.header.e_shentsize.value as usize;
-            bytes[offset..offset + sh_bytes.len()].copy_from_slice(&sh_bytes);
-        }
-
-        bytes
-    }
-}
+//impl<'a> From<&Elf64Binary<'a>> for Vec<u8> {
+//    fn from(h: Elf64Binary<'a>) -> Vec<u8> {
+//        let mut bytes = h.raw.clone();
+//        let endian = &h.endian();
+//
+//        let header_bytes: Vec<u8> = (h.header).into();
+//        bytes[0..header_bytes.len()].copy_from_slice(&header_bytes);
+//
+//        for (i, ph) in h.program_headers.iter().enumerate() {
+//            let ph_bytes: Vec<u8> = ph.into();
+//            let offset = h.header.e_phoff.value(endian) as usize + i * h.header.e_phentsize.value(endian) as usize;
+//            bytes[offset..offset + ph_bytes.len()].copy_from_slice(&ph_bytes);
+//        }
+//
+//        for (i, sh) in h.section_headers.iter().enumerate() {
+//            let sh_bytes: Vec<u8> = sh.into();
+//            let offset = h.header.e_shoff.value(endian) as usize + i * h.header.e_shentsize.value(endian) as usize;
+//            bytes[offset..offset + sh_bytes.len()].copy_from_slice(&sh_bytes);
+//        }
+//
+//        bytes.to_vec()
+//    }
+//}
+//
+//impl From<&mut Elf64Binary> for Vec<u8> {
+//    fn from(h: &mut Elf64Binary) -> Vec<u8> {
+//        let mut bytes = h.raw.clone();
+//
+//        let header_bytes: Vec<u8> = (&h.header).into();
+//        bytes[0..header_bytes.len()].copy_from_slice(&header_bytes);
+//
+//        for (i, ph) in h.program_headers.iter().enumerate() {
+//            let ph_bytes: Vec<u8> = ph.into();
+//            let offset = h.header.e_phoff.value as usize + i * h.header.e_phentsize.value as usize;
+//            bytes[offset..offset + ph_bytes.len()].copy_from_slice(&ph_bytes);
+//        }
+//
+//        for (i, sh) in h.section_headers.iter().enumerate() {
+//            let sh_bytes: Vec<u8> = sh.into();
+//            let offset = h.header.e_shoff.value as usize + i * h.header.e_shentsize.value as usize;
+//            bytes[offset..offset + sh_bytes.len()].copy_from_slice(&sh_bytes);
+//        }
+//
+//        bytes
+//    }
+//}
