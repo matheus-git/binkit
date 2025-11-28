@@ -10,7 +10,6 @@ use dto::disasm_dto::DisasmDTO;
 use std::fs;
 
 use clap::{Parser, Subcommand};
-use clap::error::ErrorKind;
 use anyhow::{Result, Context};
 
 use crate::dto::check_inject_dto::CheckInjectDTO;
@@ -85,7 +84,7 @@ enum Commands {
         #[arg(help = "Path to the ELF file to modify")]
         file: String,       
 
-        #[arg(long, help = "Set a new entry point for the ELF file (hexadecimal)")]
+        #[arg(short = 'e', long, help = "Set a new entry point for the ELF file (hexadecimal)")]
         entry: Option<String>,
 
         #[arg(short = 'o', long, help = "Path to save the updated ELF file")]
@@ -100,27 +99,27 @@ fn main() -> Result<()> {
         Ok(fs::read(file)?)
     }
 
-    let mut raw: Vec<u8>;
+    let raw: Vec<u8>;
     let mut binary: Elf64Binary;
 
     match &cli.command {
         Commands::Inject { file, address, return_address, inject, output, section } => {
-            //raw = load_file(file)?;
-            //binary = Elf64Binary::new(&raw)?;
+            raw = load_file(file)?;
+            binary = Elf64Binary::new(&raw)?;
 
-            //let dto = InjectDTO {
-            //    file,
-            //    inject,
-            //    address: address.as_deref(),
-            //    section: section.as_deref(),
-            //    return_address: return_address.as_deref(),
-            //    output
-            //};
+            let dto = InjectDTO {
+                file,
+                inject,
+                address: address.as_deref(),
+                section: section.as_deref(),
+                return_address: return_address.as_deref(),
+                output
+            };
 
-            //let mut inject = binary.inject(dto);
+            let mut inject = binary.inject(dto);
 
-            //inject.execute()
-            //    .context("Inject failed")?;
+            inject.execute()
+                .context("Inject failed")?;
         },
         Commands::CheckInject { file, return_address } => {
             raw = load_file(file)?;
@@ -167,19 +166,19 @@ fn main() -> Result<()> {
                 .context("Info command failed")?;
         },
         Commands::Update { file, entry, output } => {
-            //raw = load_file(file)?;
-            //binary = Elf64Binary::new(&raw)?;
+            raw = load_file(file)?;
+            binary = Elf64Binary::new(&raw)?;
 
-            //let dto = UpdateDTO {
-            //    file,
-            //    entry: entry.as_deref(),
-            //    output: output.as_deref()
-            //};
+            let dto = UpdateDTO {
+                file,
+                entry: entry.as_deref(),
+                output: output.as_deref()
+            };
 
-            //let mut update = binary.update(dto);
+            let mut update = binary.update(dto);
 
-            //update.execute()
-            //    .map_err(|e| clap::Error::raw(ErrorKind::DisplayHelp, e.to_string()))?;
+            update.execute()
+                .context("Update command failed")?;
         }
     }
 

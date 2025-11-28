@@ -11,9 +11,8 @@ pub enum PTypeValue {
     Shlib,
     Phdr,
     Loproc,
-    Hiproc,
     GnuStack,
-    Unknown(u32),
+    Unknown(()),
 }
 
 impl PTypeValue {
@@ -27,7 +26,6 @@ impl PTypeValue {
             PTypeValue::Shlib => "SHLIB",
             PTypeValue::Phdr => "PHDR",
             PTypeValue::Loproc => "LOPROC",
-            PTypeValue::Hiproc => "HIPROC",
             PTypeValue::GnuStack => "GNU_STACK",
             PTypeValue::Unknown(_) => "UNKNOWN",
         }
@@ -50,7 +48,7 @@ impl PTypeValue {
             6 => PTypeValue::Phdr,
             PT_LOPROC..=PT_HIPROC => PTypeValue::Loproc,
             PT_GNU_STACK => PTypeValue::GnuStack,
-            _ => PTypeValue::Unknown(val),
+            _ => PTypeValue::Unknown(()),
         }
     }
 }

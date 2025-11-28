@@ -17,7 +17,7 @@ use std::cmp::max;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
 use loaders::load_elf64_section_header::LoadELF64SectionHeader;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use std::convert::TryFrom;
 
 use types::elf64_header::Elf64Header;
@@ -139,35 +139,35 @@ impl<'a> Elf64Binary<'a> {
         self.header.e_ident.endian()
     }
 
-    pub fn disasm(&self, dto: DisasmDTO<'a>) -> DisasmBinary {
+    pub fn disasm(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
         DisasmBinary {
             binary: self,
             dto
         }
     }
 
-    pub fn update(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary {
+    pub fn update(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary<'a> {
         UpdateBinary {
             binary: self,
             dto
         }
     }
 
-    pub fn info(&self, dto: InfoDTO<'a>) -> InfoBinary {
+    pub fn info(&'a self, dto: InfoDTO<'a>) -> InfoBinary<'a> {
         InfoBinary { 
             binary: self, 
             dto 
         }
     }
 
-    pub fn check_inject(&self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary {
+    pub fn check_inject(&'a self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary<'a> {
         CheckInjectBinary { 
             binary: self, 
             dto 
         }
     }
 
-    pub fn inject(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary {
+    pub fn inject(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary<'a> {
         InjectBinary { 
             binary: self, 
             dto 
@@ -205,9 +205,10 @@ impl<'a> Elf64Binary<'a> {
         Ok(addr + delta)
     }
 
-    #[inline]
-    pub fn calculate_rel32(&self, addr_base: u64, addr_target: u64) -> i64 {
-        addr_target as i64 - addr_base as i64
+    pub fn calculate_rel32(&self, addr_base: u64, addr_target: u64) -> Result<i32> {
+        let diff = i128::from(addr_target) - i128::from(addr_base);
+
+        Ok(i32::try_from(diff).context("rel32 does not fit in i32")?)
     }
 
 }
@@ -367,6 +368,142 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
     }
 }
 
+impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
+    type Error = anyhow::Error;
+
+    fn try_from(h: &'a mut Elf64Binary<'a>) -> Result<Self, Self::Error> {
+    let mut bytes: Vec<u8> = Vec::with_capacity(h.raw.len());
+        let endian = &h.endian();
+
+        let mut current_offset: usize = 0;
+
+        let header_bytes: Vec<u8> = (&h.header).into();
+        bytes.resize(header_bytes.len(), 0);
+        bytes[current_offset..header_bytes.len()].copy_from_slice(&header_bytes);
+
+        current_offset = usize::try_from(header_bytes.len())
+            .context("sdfdfsd")?;
+
+        let phoff = usize::try_from(h.header.e_phoff.value(endian))
+            .context("sdfsdfsd")?;
+        let shoff = usize::try_from(h.header.e_shoff.value(endian))
+            .context("sfdsfsdd")?;
+
+        let ph_first = phoff < shoff;
+
+        match ph_first {
+            false => {
+                if current_offset < shoff {
+                    let slice = &h.raw
+                        .get(current_offset..shoff)
+                        .context("dsfsdfsd")?;
+                    let new_len = current_offset.checked_add(slice.len())
+                        .context("sdfsdfsd")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(slice);
+                    current_offset = shoff;
+                }
+
+                for sh in h.get_section_headers() {
+                    let sh_bytes: Vec<u8> = sh.into();
+                    let new_len = current_offset.checked_add(sh_bytes.len())
+                        .context("overflow copying section header")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(&sh_bytes);
+                    current_offset = new_len;
+                }
+
+                if current_offset < phoff {
+                    let slice = h.raw
+                        .get(current_offset..phoff)
+                        .context("dsfsdfsd")?;
+                    let new_len = current_offset.checked_add(slice.len())
+                        .context("sfsdfds")?;
+                    bytes.resize(new_len, 0);
+                    bytes[current_offset..new_len].copy_from_slice(slice);
+                    current_offset = phoff;
+                }
+
+                for ph in h.get_program_headers() {
+                    let ph_bytes: Vec<u8> = ph.into();
+                    let new_len = current_offset.checked_add(ph_bytes.len())
+                        .context("overflow copying section header")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(&ph_bytes);
+                    current_offset = new_len;
+                }
+            },
+            true => {
+                if current_offset < phoff {
+                    let slice = &h.raw
+                        .get(current_offset..phoff)
+                        .context("dsfsdfsd")?;
+                    let new_len = current_offset.checked_add(slice.len())
+                        .context("sdfsdfsd")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(slice);
+                    current_offset = phoff;
+                }
+
+                for ph in h.get_program_headers() {
+                    let ph_bytes: Vec<u8> = ph.into();
+                    let new_len = current_offset.checked_add(ph_bytes.len())
+                        .context("overflow copying section header")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(&ph_bytes);
+                    current_offset = new_len;
+                }
+
+                if current_offset < shoff {
+                    let slice = h.raw
+                        .get(current_offset..shoff)
+                        .context("dsfsdfsd")?;
+                    let new_len = current_offset.checked_add(slice.len())
+                        .context("sfsdfds")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(slice);
+                    current_offset = shoff;
+                }
+
+                for sh in h.get_section_headers() {
+                    let sh_bytes: Vec<u8> = sh.into();
+                    let new_len = current_offset.checked_add(sh_bytes.len())
+                        .context("overflow copying section header")?;
+                    if bytes.len() < new_len {
+                        bytes.resize(new_len, 0);
+                    }
+                    bytes[current_offset..new_len].copy_from_slice(&sh_bytes);
+                    current_offset = new_len;
+                }
+            }
+        }
+
+        let slice = h.raw
+            .get(current_offset..)
+            .context("sdfsdfds")?;
+        let new_len = current_offset.checked_add(slice.len())
+            .context("overflow copying section header")?;
+        if bytes.len() < new_len {
+            bytes.resize(new_len, 0);
+        }
+        bytes[current_offset..].copy_from_slice(slice);
+
+        Ok(bytes)
+
+    }
+}
 //impl From<&mut Elf64Binary> for Vec<u8> {
 //    fn from(h: &mut Elf64Binary) -> Vec<u8> {
 //        let mut bytes = h.raw.clone();

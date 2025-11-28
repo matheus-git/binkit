@@ -1,9 +1,10 @@
 use crate::dto::inject_dto::InjectDTO;
-use crate::elf64::{Elf64Binary};
-use crate::utils::parse_hex::parse_hex_to_u64;
+use crate::elf64::{Elf64Binary, ALIGN};
+use crate::traits::header_field::HeaderField;
 use crate::utils::save_file::save_file;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use std::fs;
+use std::borrow::Cow;
 
 pub struct InjectBinary<'a> {
     pub binary: &'a mut Elf64Binary<'a>,
@@ -12,101 +13,87 @@ pub struct InjectBinary<'a> {
 
 impl<'a> InjectBinary<'a> {
     fn update_section_name(&mut self, section_name_idx: usize){
-        //let endian = self.binary.header.e_ident.endian();
+        let endian = &self.binary.header.e_ident.endian();
 
-        //let shstrtab_idx = endian.read_u16(self.binary.header.e_shstrndx.raw);
-        //let shstrtab_section_header = &self.binary.section_headers[shstrtab_idx as usize];
-        //let shstrtab_section_header_offset = endian.read_u64(shstrtab_section_header.sh_offset.raw);
-        //
-        //let new_name = ".injected\0".as_bytes(); 
-        //let start = shstrtab_section_header_offset as usize + section_name_idx;
-        //let end = start + new_name.len();
-        //
-        //self.binary.raw[start..end].copy_from_slice(new_name);
+        let shstrtab_idx = self.binary.header.e_shstrndx.value(endian);
+        let shstrtab_section_header = &self.binary.section_headers[shstrtab_idx as usize];
+        let shstrtab_section_header_offset = shstrtab_section_header.sh_offset.value(endian);
+        
+        let new_name = ".injected\0".as_bytes(); 
+        let start = shstrtab_section_header_offset as usize + section_name_idx;
+        let end = start + new_name.len();
+        
+        self.binary.raw.to_mut()[start..end].copy_from_slice(new_name);
     }
 
-    fn inject(&mut self, buf: Vec<u8>, _new_addr: u64, section: &str) -> Vec<u8> {
-        //let target_section: &str = section;
+    fn inject(&mut self, buf: Vec<u8>, new_addr: u64, section: &str) -> Result<()> {
+        let target_section: &str = section;
+        let endian = &self.binary.header.e_ident.endian();
 
-        buf
+        let section_index = self.binary.section_headers.iter().position(|s| {
+            self.binary.resolve_section_name(s, endian).ok() == Some(target_section)
+        }).ok_or_else(|| anyhow::anyhow!("Section not found"))?;
 
-        //let bytes: Vec<u8> = self.binary.into();
-        //let file_off = bytes.len() as u64;
+        let note_section = &mut self.binary.section_headers[section_index];
 
-        //let endian = self.binary.header.e_ident.endian();
+        let note_offset = note_section.sh_offset.raw.clone();
+        let section_name_idx = note_section.sh_name.value(endian) as usize;
 
-        //let note_section = self.binary.section_headers
-        //    .iter_mut()
-        //    .find(|s| s.sh_name.name == target_section);
+        note_section.sh_type.raw = Cow::Owned(endian.to_bytes_u32(1));            
+        note_section.sh_addr.raw = Cow::Owned(endian.to_bytes_u64(new_addr).clone());
+        note_section.sh_size.raw = Cow::Owned(endian.to_bytes_u64(buf.len() as  u64));
+        note_section.sh_offset.raw = Cow::Owned(endian.to_bytes_u64(self.binary.raw.len().try_into()?).clone());
+        note_section.sh_addralign.raw = Cow::Owned(endian.to_bytes_u64(16));
+        note_section.sh_flags.raw = Cow::Owned(endian.to_bytes_u64(6));
 
-        //let note_offset = if let Some(section) = note_section {
-        //    let note_offset = section.sh_offset.raw;
-        //    let section_name_idx = endian.read_u32(section.sh_name.raw) as usize;
+        self.update_section_name(section_name_idx);
 
-        //    section.sh_type.raw = endian.to_bytes_u32(1);            
-        //    section.sh_addr.raw = endian.to_bytes_u64(new_addr);
-        //    section.sh_size.raw = endian.to_bytes_u64(buf.len() as  u64);
-        //    section.sh_offset.raw = endian.to_bytes_u64(file_off);
-        //    section.sh_addralign.raw = endian.to_bytes_u64(16);
-        //    section.sh_flags.raw = endian.to_bytes_u64(6);
+        if let Some(program) = self.binary.program_headers
+            .iter_mut()
+            .find(|p| p.p_offset.raw == note_offset)
+        {
+            program.p_offset.raw = Cow::Owned(endian.to_bytes_u64(self.binary.raw.len() as u64));
+            program.p_flags.raw = Cow::Owned(endian.to_bytes_u32(5));
+            program.p_type.raw = Cow::Owned(endian.to_bytes_u32(1));
+            program.p_vaddr.raw = Cow::Owned(endian.to_bytes_u64(new_addr));
+            program.p_paddr.raw = Cow::Owned(endian.to_bytes_u64(new_addr));
+            program.p_memsz.raw = Cow::Owned(endian.to_bytes_u64(buf.len() as u64));
+            program.p_filesz.raw = Cow::Owned(endian.to_bytes_u64(buf.len() as u64));
+            program.p_align.raw = Cow::Owned(endian.to_bytes_u64(ALIGN));
+        } else {
+            println!("Program header not found!");
+        }
 
-        //    self.update_section_name(section_name_idx);
-
-        //    note_offset
-        //} else {
-        //    println!("{} not found", target_section);
-        //    return Vec::new();
-        //};        
-
-        //if let Some(program) = self.binary.program_headers
-        //    .iter_mut()
-        //    .find(|p| p.p_offset.raw == note_offset)
-        //{
-        //    program.p_offset.raw = endian.to_bytes_u64(self.binary.raw.len() as u64);
-        //    program.p_flags.raw = endian.to_bytes_u32(5);
-        //    program.p_type.raw = endian.to_bytes_u32(1);
-        //    program.p_vaddr.raw = endian.to_bytes_u64(new_addr);
-        //    program.p_paddr.raw = endian.to_bytes_u64(new_addr);
-        //    program.p_memsz.raw = endian.to_bytes_u64(buf.len() as u64);
-        //    program.p_filesz.raw = endian.to_bytes_u64(buf.len() as u64);
-        //    program.p_align.raw = endian.to_bytes_u64(ALIGN);
-        //} else {
-        //    println!("Program header not found!");
-        //    return Vec::new();
-        //}
-
-        //let mut injected: Vec<u8> = self.binary.into();
-        //injected.extend(buf);
-
-        //injected
+        Ok(())
     }
 
     pub fn execute(&mut self) -> Result<()> {
-        //let bytes = fs::read(self.dto.inject)?; 
+        let bytes = fs::read(self.dto.inject)?; 
 
-        //let address = self
-        //    .dto
-        //    .address
-        //    .map(parse_hex_to_u64)
-        //    .unwrap_or_else(|| self.binary.get_address_to_inject());
+        let address = match self.dto.address {
+            Some(a) => u64::from_str_radix(a, 16)?,  
+            None => self.binary.get_address_to_inject()?,
+        };
 
-        //let return_address = self.dto.return_address
-        //    .map(parse_hex_to_u64)
-        //    .unwrap_or_else(|| self.binary.entry());
+        let return_address = match self.dto.return_address {
+            Some(a) => u64::from_str_radix(a, 16)?,  
+            None => self.binary.entry(),
+        };
 
-        //let section = self.dto.section.unwrap_or(".note.ABI-tag");
+        let section = self.dto.section.unwrap_or(".note.ABI-tag");
 
-        //let injected: Vec<u8> = self.inject(bytes, address, section);
-        //println!("Payload injected at 0x{:X}", address);
-        //let rel32_addr = self.binary.calculate_rel32(address, return_address);
+        self.inject(bytes, address, section)?;
+        let injected: Vec<u8> = (&*self.binary).try_into()?;
+        println!("Payload injected at 0x{:X}", address);
+        let rel32_addr = self.binary.calculate_rel32(address, return_address)?;
 
-        //match self.dto.address {
-        //    Some(_) => println!("Rel32 to 0x{:X}: 0x{:X}", return_address, rel32_addr),
-        //    None => println!("Rel32 to original entry point (0x{:X}): 0x{:X}", return_address, rel32_addr)
-        //}
+        match self.dto.address {
+            Some(_) => println!("Rel32 to 0x{:X}: 0x{:X}", return_address, rel32_addr),
+            None => println!("Rel32 to original entry point (0x{:X}): 0x{:X}", return_address, rel32_addr)
+        }
 
-        //save_file(self.dto.output, &injected)?;
-        //println!("Output written to: {}", self.dto.output);
+        save_file(self.dto.output, &injected)?;
+        println!("Output written to: {}", self.dto.output);
 
         Ok(())
     }

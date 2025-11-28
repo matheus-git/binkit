@@ -12,7 +12,7 @@ pub struct DisasmBinary<'a> {
 }
 
 impl DisasmBinary<'_> {
-    fn get_section(&self, section_name: &str, endian: &Endian) -> Result<&Elf64SectionHeader> {
+    fn get_section(&self, section_name: &str, endian: &Endian) -> Result<&Elf64SectionHeader<'_>> {
         for section in self.binary.get_section_headers().iter() {
             let current_section_name = self.binary
                 .resolve_section_name(section, endian)

@@ -30,7 +30,7 @@ use e_shstrndx::EShstrndx;
 use e_type::EType;
 use e_version::EVersion;
 
-use crate::{elf64::loaders::load_elf64_header::LoadELF64Header, traits::header_field::HeaderField};
+use crate::elf64::loaders::load_elf64_header::LoadELF64Header;
 
 #[derive(Debug)]
 pub struct Elf64Header<'a> {
