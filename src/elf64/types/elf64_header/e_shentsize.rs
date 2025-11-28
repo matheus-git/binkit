@@ -14,7 +14,7 @@ impl<'a> EShentsize<'a> {
     }
 }
 
-impl<'a> HeaderField for EShentsize<'a> {
+impl HeaderField for EShentsize<'_> {
     type Value = u16;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

@@ -42,7 +42,7 @@ impl<'a> EType<'a> {
     }
 }
 
-impl<'a> HeaderField for EType<'a> {
+impl HeaderField for EType<'_> {
     type Value = ETypeValue;
     fn describe(&self,endian: &Endian) -> String {
         self.value(endian).as_str().to_string()
@@ -58,7 +58,7 @@ impl<'a> HeaderField for EType<'a> {
     }
 }
 
-impl<'a> From<&EType<'a>> for Vec<u8> {
+impl From<&EType<'_>> for Vec<u8> {
     fn from(h: &EType) -> Vec<u8> {
         h.raw.to_vec()
     }

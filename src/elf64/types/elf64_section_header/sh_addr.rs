@@ -14,7 +14,7 @@ impl<'a> ShAddr<'a> {
     }
 }
 
-impl<'a> HeaderField for ShAddr<'a> {
+impl HeaderField for ShAddr<'_> {
     type Value = u64;
     fn describe(&self, endian: &Endian) -> String {
         format!("0x{:X}", endian.read_u64(*self.raw))

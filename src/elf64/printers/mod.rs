@@ -33,11 +33,12 @@ pub fn print_header(header: &Elf64Header, endian: &Endian) {
         .with(Style::modern());
     let table = Table::new(fields).with(table_config).to_string();
     println!("Elf header:");
-    println!("{}", table);
+    println!("{table}");
 }
 
 pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) {
     #[derive(Tabled)]
+    #[allow(clippy::struct_field_names)]
     struct ProgramHeaderFields {
         p_type: String,
         p_offset: String,
@@ -72,11 +73,12 @@ pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) {
     let table = Table::new(fields).with(table_config).to_string();
 
     println!("\nProgram headers:");
-    println!("{}", table);
+    println!("{table}");
 }
 
 pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian) {
     #[derive(Tabled)]
+    #[allow(clippy::struct_field_names)]
     struct SectionHeaderFields {
         sh_name: String,
         sh_type: String,
@@ -115,5 +117,5 @@ pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian) {
     let table = Table::new(fields).with(table_config).to_string();
 
     println!("\nSection headers:");
-    println!("{}", table);
+    println!("{table}");
 }

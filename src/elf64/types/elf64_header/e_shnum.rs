@@ -14,7 +14,7 @@ impl<'a> EShnum<'a>{
     }
 }
 
-impl<'a> HeaderField for EShnum<'a> {
+impl HeaderField for EShnum<'_> {
     type Value = u16;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

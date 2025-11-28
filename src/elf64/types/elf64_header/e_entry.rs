@@ -14,10 +14,10 @@ impl<'a> EEntry<'a> {
     }
 }
 
-impl<'a> HeaderField for EEntry<'a> {
+impl HeaderField for EEntry<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
-        self.value(endian).to_string()
+        self.value(endian).clone()
     }
     fn value(&self, endian: &Endian) -> Self::Value {
         format!("0x{:X}", endian.read_u64(*self.raw))

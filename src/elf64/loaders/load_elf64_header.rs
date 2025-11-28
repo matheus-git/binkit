@@ -3,6 +3,7 @@ use plain::Plain;
 
 #[repr(C)]
 #[derive(Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct LoadELF64Header {
     pub e_ident: [u8; 16],
     pub e_type: [u8; 2],

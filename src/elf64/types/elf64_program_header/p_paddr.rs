@@ -14,7 +14,7 @@ impl<'a> PPaddr<'a> {
     }
 }
 
-impl<'a> HeaderField for PPaddr<'a> {
+impl HeaderField for PPaddr<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian)

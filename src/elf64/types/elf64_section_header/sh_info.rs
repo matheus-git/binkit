@@ -14,7 +14,7 @@ impl<'a> ShInfo<'a> {
     }
 }
 
-impl<'a> HeaderField for ShInfo<'a> {
+impl HeaderField for ShInfo<'_> {
     type Value = u32;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

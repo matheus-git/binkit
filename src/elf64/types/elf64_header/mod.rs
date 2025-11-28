@@ -33,6 +33,7 @@ use e_version::EVersion;
 use crate::elf64::loaders::load_elf64_header::LoadELF64Header;
 
 #[derive(Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct Elf64Header<'a> {
     pub e_ident: EIdent<'a>,
     pub e_type: EType<'a>,

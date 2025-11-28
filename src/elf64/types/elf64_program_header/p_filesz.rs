@@ -14,7 +14,7 @@ impl<'a> PFilesz<'a> {
     }
 }
 
-impl<'a> HeaderField for PFilesz<'a> {
+impl HeaderField for PFilesz<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian)

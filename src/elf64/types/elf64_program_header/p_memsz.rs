@@ -14,7 +14,7 @@ impl<'a> PMemsz<'a> {
     }
 }
 
-impl<'a> HeaderField for PMemsz<'a> {
+impl HeaderField for PMemsz<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian)

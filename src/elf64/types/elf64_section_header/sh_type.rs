@@ -48,7 +48,7 @@ impl ShTypeValue {
             ShTypeValue::NoBits => "NOBITS",
             ShTypeValue::Rel => "REL",
             ShTypeValue::DynSym => "DYNSYM",
-            ShTypeValue::Other(_) => "OTHER",
+            ShTypeValue::Other(()) => "OTHER",
         }
     }
 }
@@ -66,7 +66,7 @@ impl<'a> ShType<'a> {
     }
 }
 
-impl<'a> HeaderField for ShType<'a> {
+impl HeaderField for ShType<'_> {
     type Value = ShTypeValue;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).as_str().to_string()

@@ -14,7 +14,7 @@ impl<'a> EShoff<'a> {
     }
 }
 
-impl<'a> HeaderField for EShoff<'a> {
+impl HeaderField for EShoff<'_> {
     type Value = u64;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

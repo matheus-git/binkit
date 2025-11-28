@@ -70,14 +70,13 @@ impl<'a> EMachine<'a> {
     }
 }
 
-impl<'a> HeaderField for EMachine<'a> {
+impl HeaderField for EMachine<'_> {
     type Value = EMachineValue;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).as_str().to_string()
     }
     fn value(&self, endian: &Endian) -> Self::Value {
        match endian.read_u16(*self.raw) {
-            0 => EMachineValue::None,
             1 => EMachineValue::M32,
             2 => EMachineValue::Sparc,
             3 => EMachineValue::EM386,
@@ -101,7 +100,7 @@ impl<'a> HeaderField for EMachine<'a> {
     }
 }
 
-impl<'a> From<&EMachine<'a>> for Vec<u8> {
+impl From<&EMachine<'_>> for Vec<u8> {
     fn from(h: &EMachine) -> Vec<u8> {
         h.raw.to_vec()
     }

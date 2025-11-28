@@ -9,7 +9,7 @@ pub struct UpdateBinary<'a> {
     pub dto: UpdateDTO<'a>
 }
 
-impl<'a> UpdateBinary<'a> {
+impl UpdateBinary<'_> {
     pub fn set_entry(&mut self, hex_entry: &str) -> Result<()> {
         let endian = self.binary.endian();
 
@@ -25,7 +25,7 @@ impl<'a> UpdateBinary<'a> {
             self.set_entry(entry)?; 
             let bytes: Vec<u8> = (&*self.binary).try_into()?;
             save_file(final_output, &bytes)?;
-            println!("Output written to: {}", final_output);
+            println!("Output written to: {final_output}");
         } else {
             return Err(anyhow!("Not found arguments"));
         }

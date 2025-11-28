@@ -40,13 +40,14 @@ impl<'a> PFlags<'a> {
     }
 }
 
-impl<'a> HeaderField for PFlags<'a> {
+impl HeaderField for PFlags<'_> {
     type Value = Vec<PFlagsValue>;
     fn describe(&self, endian: &Endian) -> String {
         let values = self.value(endian);
         if values.is_empty() {
             "None".to_string()
         } else {
+            #[allow(clippy::redundant_closure_for_method_calls)]
             values.iter().map(|f| f.as_str()).collect::<Vec<_>>().join(" | ")
         }
     }

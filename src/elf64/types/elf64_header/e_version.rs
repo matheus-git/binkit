@@ -38,7 +38,7 @@ impl<'a> EVersion<'a> {
     }
 }
 
-impl<'a> HeaderField for EVersion<'a> {
+impl HeaderField for EVersion<'_> {
     type Value = EVersionValue;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).as_str().to_string()

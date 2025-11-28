@@ -14,7 +14,7 @@ impl<'a> ShAddralign<'a> {
     }
 }
 
-impl<'a> HeaderField for ShAddralign<'a> {
+impl HeaderField for ShAddralign<'_> {
     type Value = u64;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

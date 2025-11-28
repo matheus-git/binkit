@@ -1,8 +1,8 @@
 use crate::dto::inject_dto::InjectDTO;
-use crate::elf64::{Elf64Binary, ALIGN};
+use crate::elf64::{Elf64Binary, ALIGN, calculate_rel32};
 use crate::traits::header_field::HeaderField;
 use crate::utils::save_file::save_file;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use std::fs;
 use std::borrow::Cow;
 
@@ -11,8 +11,8 @@ pub struct InjectBinary<'a> {
     pub dto: InjectDTO<'a>
 }
 
-impl<'a> InjectBinary<'a> {
-    fn update_section_name(&mut self, section_name_idx: usize){
+impl InjectBinary<'_> {
+    fn update_section_name(&mut self, section_name_idx: usize) -> Result<()>{
         let endian = &self.binary.header.e_ident.endian();
 
         let shstrtab_idx = self.binary.header.e_shstrndx.value(endian);
@@ -20,13 +20,15 @@ impl<'a> InjectBinary<'a> {
         let shstrtab_section_header_offset = shstrtab_section_header.sh_offset.value(endian);
         
         let new_name = ".injected\0".as_bytes(); 
-        let start = shstrtab_section_header_offset as usize + section_name_idx;
+        let shstrtab_section_header_offset = usize::try_from(shstrtab_section_header_offset)?;
+        let start = shstrtab_section_header_offset.checked_add(section_name_idx).ok_or(anyhow!("failed".to_string()))?;
         let end = start + new_name.len();
         
         self.binary.raw.to_mut()[start..end].copy_from_slice(new_name);
+        Ok(())
     }
 
-    fn inject(&mut self, buf: Vec<u8>, new_addr: u64, section: &str) -> Result<()> {
+    fn inject(&mut self, buf: &[u8], new_addr: u64, section: &str) -> Result<()> {
         let target_section: &str = section;
         let endian = &self.binary.header.e_ident.endian();
 
@@ -40,13 +42,13 @@ impl<'a> InjectBinary<'a> {
         let section_name_idx = note_section.sh_name.value(endian) as usize;
 
         note_section.sh_type.raw = Cow::Owned(endian.to_bytes_u32(1));            
-        note_section.sh_addr.raw = Cow::Owned(endian.to_bytes_u64(new_addr).clone());
+        note_section.sh_addr.raw = Cow::Owned(endian.to_bytes_u64(new_addr));
         note_section.sh_size.raw = Cow::Owned(endian.to_bytes_u64(buf.len() as  u64));
-        note_section.sh_offset.raw = Cow::Owned(endian.to_bytes_u64(self.binary.raw.len().try_into()?).clone());
+        note_section.sh_offset.raw = Cow::Owned(endian.to_bytes_u64(self.binary.raw.len().try_into()?));
         note_section.sh_addralign.raw = Cow::Owned(endian.to_bytes_u64(16));
         note_section.sh_flags.raw = Cow::Owned(endian.to_bytes_u64(6));
 
-        self.update_section_name(section_name_idx);
+        self.update_section_name(section_name_idx)?;
 
         if let Some(program) = self.binary.program_headers
             .iter_mut()
@@ -82,14 +84,14 @@ impl<'a> InjectBinary<'a> {
 
         let section = self.dto.section.unwrap_or(".note.ABI-tag");
 
-        self.inject(bytes, address, section)?;
+        self.inject(&bytes, address, section)?;
         let injected: Vec<u8> = (&*self.binary).try_into()?;
-        println!("Payload injected at 0x{:X}", address);
-        let rel32_addr = self.binary.calculate_rel32(address, return_address)?;
+        println!("Payload injected at 0x{address:X}");
+        let rel32_addr = calculate_rel32(address, return_address)?;
 
         match self.dto.address {
-            Some(_) => println!("Rel32 to 0x{:X}: 0x{:X}", return_address, rel32_addr),
-            None => println!("Rel32 to original entry point (0x{:X}): 0x{:X}", return_address, rel32_addr)
+            Some(_) => println!("Rel32 to 0x{return_address:X}: 0x{rel32_addr:X}"),
+            None => println!("Rel32 to original entry point (0x{return_address:X}): 0x{rel32_addr:X}")
         }
 
         save_file(self.dto.output, &injected)?;

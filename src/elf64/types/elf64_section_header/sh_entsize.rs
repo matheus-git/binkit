@@ -14,7 +14,7 @@ impl<'a> ShEntsize<'a> {
     }
 }
 
-impl<'a> HeaderField for ShEntsize<'a> {
+impl HeaderField for ShEntsize<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian)

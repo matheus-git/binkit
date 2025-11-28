@@ -14,7 +14,7 @@ impl<'a> PAlign<'a> {
     }
 }
 
-impl<'a> HeaderField for PAlign<'a> {
+impl HeaderField for PAlign<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian)

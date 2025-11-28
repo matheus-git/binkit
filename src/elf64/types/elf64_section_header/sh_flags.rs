@@ -45,7 +45,7 @@ impl<'a> ShFlags<'a> {
     }
 }
 
-impl<'a> HeaderField for ShFlags<'a>{
+impl HeaderField for ShFlags<'_>{
     type Value = Vec<ShFlagsValue>;
     fn describe(&self, endian: &Endian) -> String {
         let values = self.value(endian);
@@ -54,7 +54,7 @@ impl<'a> HeaderField for ShFlags<'a>{
         } else {
             values
                 .iter()
-                .map(|v| v.as_str())
+                .map(ShFlagsValue::as_str)
                 .collect::<Vec<_>>()
                 .join(" | ")
         }

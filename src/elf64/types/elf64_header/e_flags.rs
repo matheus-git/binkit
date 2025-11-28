@@ -14,7 +14,7 @@ impl<'a> EFlags<'a> {
     }
 }
 
-impl<'a> HeaderField for EFlags<'a> {
+impl HeaderField for EFlags<'_> {
     type Value = u32;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

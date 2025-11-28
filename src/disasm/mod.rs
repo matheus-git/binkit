@@ -6,6 +6,13 @@ use tabled::{Table, Tabled};
 use tabled::settings::{Settings, Remove,object::Rows, Style};
 use crate::utils::bytes_to_hex::bytes_to_hex;
 
+#[derive(Tabled)]
+struct Instruction {
+    address: String,
+    ins: String,
+    bytes: String,
+}
+
 pub fn disass(addr: u64, buf: &[u8]) {
     let mut cs = Capstone::new()
         .x86()
@@ -32,12 +39,6 @@ pub fn disass(addr: u64, buf: &[u8]) {
     println!("Found {} instructions", insns.len());
     println!();
 
-    #[derive(Tabled)]
-    struct Instruction {
-        address: String,
-        instruction: String,
-        bytes: String,
-    }
 
     let table_config = Settings::default()
             .with(Style::empty())
@@ -50,11 +51,11 @@ pub fn disass(addr: u64, buf: &[u8]) {
             Instruction { 
                 address: format!("0x{:X}", i.address()),
                 bytes: bytes_to_hex(i.bytes()), 
-                instruction: format!("{} {}", i.mnemonic().unwrap(), i.op_str().unwrap())
+                ins: format!("{} {}", i.mnemonic().unwrap(), i.op_str().unwrap())
             }
         );
     }
 
     let table = Table::new(instructions).with(table_config).to_string();
-    println!("{}", table);
+    println!("{table}");
 }

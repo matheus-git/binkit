@@ -25,6 +25,7 @@ use sh_type::ShType;
 use crate::elf64::loaders::load_elf64_section_header::LoadELF64SectionHeader;
 
 #[derive(Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct Elf64SectionHeader<'a> {
     pub sh_name: ShName<'a>,
     pub sh_type: ShType<'a>,
@@ -55,7 +56,7 @@ impl<'a> Elf64SectionHeader<'a> {
     }
 }
 
-impl<'a> From<&Elf64SectionHeader<'a>> for Vec<u8> {
+impl From<&Elf64SectionHeader<'_>> for Vec<u8> {
     fn from(h: &Elf64SectionHeader) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&*h.sh_name.raw);

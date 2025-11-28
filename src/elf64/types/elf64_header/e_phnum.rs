@@ -14,7 +14,7 @@ impl<'a> EPhnum<'a> {
     }
 }
 
-impl<'a> HeaderField for EPhnum<'a> {
+impl HeaderField for EPhnum<'_> {
     type Value = u16;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

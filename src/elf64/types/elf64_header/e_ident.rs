@@ -14,7 +14,7 @@ impl EiClass {
         match self {
             Self::Class32 => "Elf32",
             Self::Class64 => "Elf64",
-            _ => "None"
+            Self::ClassNone => "None"
         }
     }
 }
@@ -105,8 +105,7 @@ impl<'a> EIdent<'a> {
 
     pub fn endian(&self) -> Endian {
         match &self.ei_data() {
-            EiData::DataNone => Endian::Little,
-            EiData::Data2LSB => Endian::Little,
+            EiData::DataNone | EiData::Data2LSB => Endian::Little,
             EiData::Data2MSB => Endian::Big
         }
     }
@@ -135,7 +134,7 @@ impl<'a> EIdent<'a> {
     }
 }
 
-impl<'a> HeaderField for EIdent<'a> {
+impl HeaderField for EIdent<'_> {
     type Value = Option<()>;
     fn describe(&self, _endian: &Endian) -> String {
         format!(
@@ -152,7 +151,7 @@ impl<'a> HeaderField for EIdent<'a> {
     }
 }
 
-impl<'a> From<&EIdent<'a>> for Vec<u8> {
+impl From<&EIdent<'_>> for Vec<u8> {
     fn from(h: &EIdent) -> Vec<u8> {
         h.raw.to_vec()
     }

@@ -14,7 +14,7 @@ impl<'a> POffset<'a> {
     }
 }
 
-impl<'a> HeaderField for POffset<'a> {
+impl HeaderField for POffset<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).clone()

@@ -14,7 +14,7 @@ impl<'a> EEhsize<'a> {
     }
 }
 
-impl<'a> HeaderField for EEhsize<'a> {
+impl HeaderField for EEhsize<'_> {
     type Value = u16;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).to_string()

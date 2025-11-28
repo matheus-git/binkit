@@ -27,14 +27,14 @@ impl PTypeValue {
             PTypeValue::Phdr => "PHDR",
             PTypeValue::Loproc => "LOPROC",
             PTypeValue::GnuStack => "GNU_STACK",
-            PTypeValue::Unknown(_) => "UNKNOWN",
+            PTypeValue::Unknown(()) => "UNKNOWN",
         }
     }
 
     pub fn from_raw(raw: [u8; 4], endian: &Endian) -> Self {
-        const PT_LOPROC: u32 = 0x70000000;
-        const PT_HIPROC: u32 = 0x7fffffff;
-        const PT_GNU_STACK: u32 = 0x6474e550;
+        const PT_LOPROC: u32 = 0x7000_0000;
+        const PT_HIPROC: u32 = 0x7fff_ffff;
+        const PT_GNU_STACK: u32 = 0x6474_e550;
 
         let val = endian.read_u32(raw);
 
@@ -66,7 +66,7 @@ impl<'a> PType<'a> {
     }
 }
 
-impl<'a> HeaderField for PType<'a> {
+impl HeaderField for PType<'_> {
     type Value = PTypeValue;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).as_str().to_string()

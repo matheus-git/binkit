@@ -14,7 +14,7 @@ impl<'a> ShSize<'a> {
     }
 }
 
-impl<'a> HeaderField for ShSize<'a> {
+impl HeaderField for ShSize<'_> {
     type Value = u64;
     fn describe(&self, endian: &Endian) -> String {
         format!("0x{:X}", endian.read_u64(*self.raw))

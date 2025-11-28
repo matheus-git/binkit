@@ -92,12 +92,12 @@ enum Commands {
     }
 }
 
+fn load_file(file: &str) -> Result<Vec<u8>> {
+    Ok(fs::read(file)?)
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    fn load_file(file: &str) -> Result<Vec<u8>> {
-        Ok(fs::read(file)?)
-    }
 
     let raw: Vec<u8>;
     let mut binary: Elf64Binary;

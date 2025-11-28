@@ -13,17 +13,17 @@ pub struct DisasmBinary<'a> {
 
 impl DisasmBinary<'_> {
     fn get_section(&self, section_name: &str, endian: &Endian) -> Result<&Elf64SectionHeader<'_>> {
-        for section in self.binary.get_section_headers().iter() {
+        for section in self.binary.get_section_headers() {
             let current_section_name = self.binary
                 .resolve_section_name(section, endian)
-                .with_context(|| format!("Failed resolving name for section"))?;
+                .with_context(|| "Failed resolving name for section".to_string())?;
 
             if current_section_name == section_name {
                 return Ok(section);
             }
         }
 
-        Err(anyhow!("Section '{}' not found", section_name))
+        Err(anyhow!("Section '{section_name}' not found"))
     }
     
     fn get_bytes_section(&self, section_name: &str) -> Result<(u64, &[u8])> {
@@ -39,8 +39,7 @@ impl DisasmBinary<'_> {
         let end = offset + size;
         if end > self.binary.raw.len() {
             return Err(anyhow!(
-                "Section '{}' exceeds binary bounds (0x{:x}..0x{:x})",
-                section_name, offset, end,
+                "Section '{section_name}' exceeds binary bounds (0x{offset:x}..0x{end:x})"
             ));
         }
 

@@ -14,7 +14,7 @@ impl<'a> PVaddr<'a> {
     }
 }
 
-impl<'a> HeaderField for PVaddr<'a> {
+impl HeaderField for PVaddr<'_> {
     type Value = String;
     fn describe(&self, endian: &Endian) -> String {
         self.value(endian).clone()

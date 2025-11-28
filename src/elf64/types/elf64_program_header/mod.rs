@@ -20,6 +20,7 @@ use p_vaddr::PVaddr;
 use super::super::LoadELF64ProgramHeader;
 
 #[derive(Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct Elf64ProgramHeader<'a> {
     pub p_type: PType<'a>,
     pub p_flags: PFlags<'a>,
@@ -46,7 +47,7 @@ impl<'a> Elf64ProgramHeader<'a> {
     }
 }
 
-impl<'a> From<&Elf64ProgramHeader<'a>> for Vec<u8> {
+impl From<&Elf64ProgramHeader<'_>> for Vec<u8> {
     fn from(h: &Elf64ProgramHeader) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
         bytes.extend_from_slice(&*h.p_type.raw);
