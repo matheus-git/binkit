@@ -16,7 +16,7 @@ use std::cmp::max;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
 use loaders::load_elf64_section_header::LoadELF64SectionHeader;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use std::convert::TryFrom;
 
 use types::elf64_header::Elf64Header;
@@ -110,6 +110,19 @@ impl<'a> Elf64Binary<'a> {
                 raw: Cow::Borrowed(buf)
             }
         )
+    }
+
+    pub fn strtab(&'a self) -> Result<&'a [u8]> {
+        let endian = &self.endian();
+        let strtab_section_index = self.header.e_shstrndx.value(endian) as usize;
+        let strtab_section = self.section_headers
+            .get(strtab_section_index)
+            .context("String table section index is out of bounds")?;
+
+        let strtab_section_offset = usize::try_from(strtab_section.sh_offset.value(endian))
+            .context("strtab offset does not fit in usize")?;
+
+        self.raw.get(strtab_section_offset..).ok_or(anyhow!("Invalid strtab offset"))
     }
 
     pub fn resolve_section_name(&self, section: &Elf64SectionHeader, endian: &Endian) -> Result<&str>{

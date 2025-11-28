@@ -19,7 +19,8 @@ impl InfoBinary<'_> {
         } else if self.dto.programs {
             print_program_headers(self.binary.get_program_headers(), endian);
         } else if self.dto.sections {
-            print_section_headers(self.binary.get_section_headers(), endian);
+            let strtab = self.binary.strtab()?;
+            print_section_headers(self.binary.get_section_headers(), endian, strtab)?;
         } else {
             return Err(anyhow!("Unknown info argument!"));
         }

@@ -1,9 +1,11 @@
 use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;
+use crate::utils::read_cstring::read_cstring;
 
 use super::types::{elf64_header::Elf64Header, elf64_program_header::Elf64ProgramHeader, elf64_section_header::Elf64SectionHeader};
 use tabled::{Table, Tabled};
 use tabled::settings::{Settings, Style};
+use anyhow::{Result};
 
 pub fn print_header(header: &Elf64Header, endian: &Endian) {
     #[derive(Tabled)]
@@ -76,7 +78,7 @@ pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) {
     println!("{table}");
 }
 
-pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian) {
+pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian, strtab: &[u8]) -> Result<()> {
     #[derive(Tabled)]
     #[allow(clippy::struct_field_names)]
     struct SectionHeaderFields {
@@ -98,9 +100,10 @@ pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian) {
     let mut fields: Vec<SectionHeaderFields> = Vec::with_capacity(shs.len());
 
     for sh in shs {
+        let sh_name = read_cstring(&strtab[sh.sh_name.value(endian) as usize..])?;
         fields.push(
             SectionHeaderFields { 
-                sh_name: sh.sh_name.describe(endian),
+                sh_name: sh_name.to_string(),
                 sh_type: sh.sh_type.describe(endian),
                 sh_flags: sh.sh_flags.describe(endian),
                 sh_addr: sh.sh_addr.describe(endian),
@@ -118,4 +121,5 @@ pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian) {
 
     println!("\nSection headers:");
     println!("{table}");
+    Ok(())
 }
