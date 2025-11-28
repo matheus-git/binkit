@@ -85,7 +85,8 @@ impl InjectBinary<'_> {
         let section = self.dto.section.unwrap_or(".note.ABI-tag");
 
         self.inject(&bytes, address, section)?;
-        let injected: Vec<u8> = (&*self.binary).try_into()?;
+        let mut injected: Vec<u8> = (&*self.binary).try_into()?;
+        injected.extend(bytes);
         println!("Payload injected at 0x{address:X}");
         let rel32_addr = calculate_rel32(address, return_address)?;
 
