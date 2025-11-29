@@ -2,7 +2,7 @@
 name = "binkit"
 authors = ["Matheus-git <mathiew0@gmail.com>"]
 description = "A modular toolbox for analyzing, disassembling, and patching binary formats"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT"
 edition = "2024"
 exclude = [
