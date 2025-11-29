@@ -49,7 +49,7 @@ fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
             break;
         }
 
-        let raw_header = LoadELF64ProgramHeader::from_bytes(&buf[start..end]);
+        let raw_header = LoadELF64ProgramHeader::from_bytes(&buf[start..end])?;
         headers.push(Elf64ProgramHeader::new(raw_header));
     }
 
@@ -71,7 +71,7 @@ fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
             break;
         }
 
-        let raw_header = LoadELF64SectionHeader::from_bytes(&buf[start..end]);
+        let raw_header = LoadELF64SectionHeader::from_bytes(&buf[start..end])?;
         headers.push(Elf64SectionHeader::new(raw_header));
     }
 
@@ -95,7 +95,7 @@ pub struct Elf64Binary<'a> {
 
 impl<'a> Elf64Binary<'a> {
     pub fn new(buf: &'a [u8]) -> Result<Self> {
-        let load_elf_header =  LoadELF64Header::from_bytes(buf);
+        let load_elf_header =  LoadELF64Header::from_bytes(buf)?;
         let elf_header = Elf64Header::new(load_elf_header);
         let endian: Endian = elf_header.e_ident.endian();
         

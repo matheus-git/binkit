@@ -1,5 +1,6 @@
 extern crate plain;
 use plain::Plain;
+use anyhow::{Result, anyhow};
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
@@ -18,7 +19,7 @@ pub struct LoadELF64ProgramHeader {
 unsafe impl Plain for LoadELF64ProgramHeader {}
 
 impl LoadELF64ProgramHeader {
-    pub fn from_bytes(buf: &[u8]) -> &LoadELF64ProgramHeader {
-        plain::from_bytes(buf).expect("Buffer too short or not aligned")
+    pub fn from_bytes(buf: &[u8]) -> Result<&LoadELF64ProgramHeader> {
+        plain::from_bytes(buf).map_err(|e| anyhow!("{e:?}"))
     }
 }

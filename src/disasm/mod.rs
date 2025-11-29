@@ -36,9 +36,7 @@ pub fn disass(addr: u64, buf: &[u8]) {
     let insns = cs.disasm_all(buf, addr)
         .expect("Failed to disassemble");
 
-    println!("Found {} instructions", insns.len());
-    println!();
-
+    println!("Found {} instructions\n", insns.len());
 
     let table_config = Settings::default()
             .with(Style::empty())
