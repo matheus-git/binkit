@@ -12,6 +12,7 @@ use std::fs;
 use clap::{Parser, Subcommand};
 use anyhow::{Result, Context};
 
+use crate::disasm::disass;
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::info_dto::InfoDTO;
 use crate::dto::inject_dto::InjectDTO;
@@ -59,6 +60,9 @@ enum Commands {
     Disasm {
         #[arg(help = "Path to the ELF file to disassemble")]
         file: String,
+
+        #[arg(short = 'b', long, help = "Read the file as raw binary")]
+        bin: bool,
 
         #[arg(short = 's', long, help = "Section name to disassemble. (default: .text) ")]
         section: Option<String>,
@@ -135,7 +139,13 @@ fn main() -> Result<()> {
             check_inject.execute()
                 .context("Check inject command failed")?;
         },
-        Commands::Disasm { file, section } => {
+        Commands::Disasm { file, section, bin } => {
+            if *bin {
+                let bytes = fs::read(file)?;
+                disass(0, &bytes);
+                return Ok(());
+            }
+
             raw = load_file(file)?;
             binary = Elf64Binary::new(&raw)?;
 

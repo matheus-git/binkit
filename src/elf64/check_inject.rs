@@ -12,13 +12,13 @@ impl CheckInjectBinary<'_> {
         let default_return_address = self.binary.entry();
         let return_address = if let Some(s) = self.dto.return_address {
             u64::from_str_radix(s.trim_start_matches("0x"), 16)
-                .context("invalid hex in return_address")?
+                .context("Invalid hexadecimal value for return_address")?
         } else {
             default_return_address
         };
 
         let addr = self.binary.get_address_to_inject()
-            .context("esfsdfsda")?;
+            .context("Failed to determine injection address")?;
         println!("Injection slot available at: 0x{addr:X}");
 
         let rel32_addr = calculate_rel32(addr, return_address)?;
