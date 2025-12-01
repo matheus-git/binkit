@@ -63,7 +63,8 @@ impl InjectBinary<'_> {
             program.p_filesz.raw = Cow::Owned(endian.to_bytes_u64(buf.len() as u64));
             program.p_align.raw = Cow::Owned(endian.to_bytes_u64(ALIGN));
         } else {
-            println!("Program header not found!");
+        let note_section = &mut self.binary.section_headers[section_index];
+            return Err(anyhow!("Program header not found! {}", &note_section.sh_offset.describe(endian)));
         }
 
         Ok(())
@@ -82,7 +83,7 @@ impl InjectBinary<'_> {
             None => self.binary.entry(),
         };
 
-        let section = self.dto.section.unwrap_or(".note.ABI-tag");
+        let section = self.dto.section.unwrap_or(".note.gnu.property");
 
         self.inject(&bytes, address, section)?;
         let mut injected: Vec<u8> = (&*self.binary).try_into()?;

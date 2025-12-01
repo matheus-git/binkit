@@ -142,7 +142,7 @@ fn main() -> Result<()> {
         Commands::Disasm { file, section, bin } => {
             if *bin {
                 let bytes = fs::read(file)?;
-                disass(0, &bytes);
+                disass(0, &bytes)?;
                 return Ok(());
             }
 

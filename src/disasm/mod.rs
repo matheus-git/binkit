@@ -5,6 +5,7 @@ use capstone::{Syntax, Endian};
 use tabled::{Table, Tabled};
 use tabled::settings::{Settings, Remove,object::Rows, Style};
 use crate::utils::bytes_to_hex::bytes_to_hex;
+use anyhow::Result;
 
 #[derive(Tabled)]
 struct Instruction {
@@ -13,7 +14,7 @@ struct Instruction {
     bytes: String,
 }
 
-pub fn disass(addr: u64, buf: &[u8]) {
+pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
     let mut cs = Capstone::new()
         .x86()
         .mode(arch::x86::ArchMode::Mode64)
@@ -21,22 +22,12 @@ pub fn disass(addr: u64, buf: &[u8]) {
         .build()
         .expect("Failed to create Capstone object");
 
-    let _ = cs
-        .set_endian(Endian::Little);
+    cs.
+        set_syntax(Syntax::Intel)?;
+    cs
+        .set_endian(Endian::Little)?;
 
-    let _ = cs.
-        set_syntax(Syntax::Intel);
-
-    let _ = cs. 
-        set_detail(true);
-
-    let _ = cs. 
-        set_skipdata(false);
-
-    let insns = cs.disasm_all(buf, addr)
-        .expect("Failed to disassemble");
-
-    println!("Found {} instructions\n", insns.len());
+    let insns = cs.disasm_all(buf, addr)?;
 
     let table_config = Settings::default()
             .with(Style::empty())
@@ -44,7 +35,7 @@ pub fn disass(addr: u64, buf: &[u8]) {
 
     let mut instructions: Vec<Instruction> = Vec::with_capacity(insns.len());
 
-    for i in insns.as_ref() {
+    for i in insns.iter() {
         instructions.push(
             Instruction { 
                 address: format!("0x{:X}", i.address()),
@@ -56,4 +47,5 @@ pub fn disass(addr: u64, buf: &[u8]) {
 
     let table = Table::new(instructions).with(table_config).to_string();
     println!("{table}");
+    Ok(())
 }

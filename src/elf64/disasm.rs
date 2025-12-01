@@ -50,7 +50,7 @@ impl DisasmBinary<'_> {
         let section = self.dto.section.unwrap_or(".text");
 
         let (addr, bytes) = self.get_bytes_section(section)?;
-        disass(addr, bytes);
+        disass(addr, bytes)?;
 
         Ok(())
     }
