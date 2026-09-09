@@ -50,6 +50,7 @@ impl DisasmBinary<'_> {
     }
 
     pub fn execute(&self) -> Result<()> {
+        self.binary.ensure_x86_64_little_endian("Disassembly")?;
         let section = self.dto.section.unwrap_or(".text");
 
         let (addr, bytes) = self.get_bytes_section(section)?;

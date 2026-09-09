@@ -159,6 +159,45 @@ fn disasm_accepts_raw_machine_code() {
 }
 
 #[test]
+fn architecture_specific_commands_reject_non_x86_64_elf() {
+    let dir = TestDir::new();
+    let input = dir.path("aarch64.elf");
+    let payload = dir.path("payload.bin");
+    let output_path = dir.path("injected.elf");
+    let mut fixture = elf64_fixture();
+    write_u16(&mut fixture, 18, 183);
+    fs::write(&input, fixture).unwrap();
+    fs::write(&payload, [0x90]).unwrap();
+
+    let disasm = binkit(&[
+        "disasm",
+        input.to_str().unwrap(),
+        "--section",
+        ".note.gnu.property",
+    ]);
+    assert!(!disasm.status.success());
+    assert!(
+        String::from_utf8_lossy(&disasm.stderr)
+            .contains("supports only little-endian x86-64 ELF files")
+    );
+
+    let inject = binkit(&[
+        "inject",
+        input.to_str().unwrap(),
+        "--inject",
+        payload.to_str().unwrap(),
+        "--output",
+        output_path.to_str().unwrap(),
+    ]);
+    assert!(!inject.status.success());
+    assert!(
+        String::from_utf8_lossy(&inject.stderr)
+            .contains("supports only little-endian x86-64 ELF files")
+    );
+    assert!(!output_path.exists());
+}
+
+#[test]
 fn check_inject_reports_the_selected_addresses() {
     let dir = TestDir::new();
     let input = dir.path("fixture.elf");

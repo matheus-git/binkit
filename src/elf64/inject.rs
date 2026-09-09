@@ -95,6 +95,7 @@ impl InjectBinary<'_> {
     }
 
     pub fn execute(&mut self) -> Result<()> {
+        self.binary.ensure_x86_64_little_endian("Injection")?;
         let bytes = fs::read(self.dto.inject)?;
 
         let address = match self.dto.address {

@@ -137,8 +137,21 @@ impl<'a> Elf64Binary<'a> {
         if !matches!(load_elf_header.e_ident[5], 1 | 2) {
             return Err(anyhow!("Invalid ELF byte order"));
         }
+        if load_elf_header.e_ident[6] != 1 {
+            return Err(anyhow!("Only the current ELF version is supported"));
+        }
         let elf_header = Elf64Header::new(load_elf_header);
         let endian: Endian = elf_header.e_ident.endian();
+
+        let phnum = elf_header.e_phnum.value(&endian);
+        let shnum = elf_header.e_shnum.value(&endian);
+        let shstrndx = elf_header.e_shstrndx.value(&endian);
+        if phnum == 0xffff || shstrndx == 0xffff {
+            return Err(anyhow!("ELF64 extended header numbering is not supported"));
+        }
+        if shnum == 0 && elf_header.e_shoff.value(&endian) != 0 {
+            return Err(anyhow!("ELF64 extended section counts are not supported"));
+        }
 
         let program_headers = parse_program_headers(buf, &elf_header, &endian)?;
         let section_headers = parse_section_headers(buf, &elf_header, &endian)?;
@@ -211,6 +224,17 @@ impl<'a> Elf64Binary<'a> {
 
     pub fn endian(&self) -> Endian {
         self.header.e_ident.endian()
+    }
+
+    pub(crate) fn ensure_x86_64_little_endian(&self, operation: &str) -> Result<()> {
+        let endian = self.endian();
+        let machine = endian.read_u16(*self.header.e_machine.raw);
+        if !matches!(endian, Endian::Little) || machine != 62 {
+            return Err(anyhow!(
+                "{operation} supports only little-endian x86-64 ELF files"
+            ));
+        }
+        Ok(())
     }
 
     pub fn disasm(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
@@ -489,6 +513,25 @@ mod tests {
 
         let mut raw = minimal_elf64_header();
         raw[5] = 0;
+        assert!(Elf64Binary::new(&raw).is_err());
+
+        let mut raw = minimal_elf64_header();
+        raw[6] = 0;
+        assert!(Elf64Binary::new(&raw).is_err());
+    }
+
+    #[test]
+    fn rejects_extended_header_numbering() {
+        let mut raw = minimal_elf64_header();
+        raw[56..58].copy_from_slice(&0xffff_u16.to_le_bytes());
+        assert!(Elf64Binary::new(&raw).is_err());
+
+        let mut raw = minimal_elf64_header();
+        raw[62..64].copy_from_slice(&0xffff_u16.to_le_bytes());
+        assert!(Elf64Binary::new(&raw).is_err());
+
+        let mut raw = minimal_elf64_header();
+        raw[40..48].copy_from_slice(&64_u64.to_le_bytes());
         assert!(Elf64Binary::new(&raw).is_err());
     }
 

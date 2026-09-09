@@ -87,6 +87,9 @@ cargo test --all-targets --all-features
 cargo build --release --locked
 ```
 
+See [ELF compatibility](docs/elf-compatibility.md) for supported file variants and
+operation-specific restrictions.
+
 The CLI integration suite uses `readelf`, `objdump`, GCC, Clang, and lld. On Debian or Ubuntu, install them with:
 
 ```sh
