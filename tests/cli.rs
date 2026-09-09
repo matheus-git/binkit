@@ -312,3 +312,36 @@ fn update_reports_a_destination_write_failure() {
 
     assert!(!output.status.success());
 }
+
+#[test]
+fn update_requires_force_to_overwrite_an_existing_output() {
+    let dir = TestDir::new();
+    let input = dir.path("fixture.elf");
+    let output_path = dir.path("existing.elf");
+    write_fixture(&input);
+    fs::write(&output_path, b"keep me").unwrap();
+
+    let args = [
+        "update",
+        input.to_str().unwrap(),
+        "--entry",
+        "0x402000",
+        "--output",
+        output_path.to_str().unwrap(),
+    ];
+    let rejected = binkit(&args);
+    assert!(!rejected.status.success());
+    assert_eq!(fs::read(&output_path).unwrap(), b"keep me");
+
+    let mut forced_args = args.to_vec();
+    forced_args.push("--force");
+    assert_success(&binkit(&forced_args));
+    assert_ne!(fs::read(&output_path).unwrap(), b"keep me");
+    assert!(fs::read_dir(&dir.0).unwrap().all(|entry| {
+        !entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .contains("binkit-tmp")
+    }));
+}

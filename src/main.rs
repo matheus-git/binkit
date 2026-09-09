@@ -49,6 +49,9 @@ enum Commands {
 
         #[arg(short = 'o', long, help = "Path to save the modified ELF output")]
         output: String,
+
+        #[arg(short = 'f', long, help = "Overwrite the output file if it exists")]
+        force: bool,
     },
 
     #[command(about = "Check available injection point in an ELF file")]
@@ -117,6 +120,9 @@ enum Commands {
 
         #[arg(short = 'o', long, help = "Path to save the updated ELF file")]
         output: Option<String>,
+
+        #[arg(short = 'f', long, help = "Overwrite the output file if it exists")]
+        force: bool,
     },
 }
 
@@ -138,6 +144,7 @@ fn main() -> Result<()> {
             inject,
             output,
             section,
+            force,
         } => {
             raw = load_file(file)?;
             binary = Elf64Binary::new(&raw)?;
@@ -149,6 +156,7 @@ fn main() -> Result<()> {
                 section: section.as_deref(),
                 return_address: return_address.as_deref(),
                 output,
+                force: *force,
             };
 
             let mut inject = binary.inject(dto);
@@ -216,6 +224,7 @@ fn main() -> Result<()> {
             file,
             entry,
             output,
+            force,
         } => {
             raw = load_file(file)?;
             binary = Elf64Binary::new(&raw)?;
@@ -224,6 +233,7 @@ fn main() -> Result<()> {
                 file,
                 entry: entry.as_deref(),
                 output: output.as_deref(),
+                force: *force,
             };
 
             let mut update = binary.update(dto);
