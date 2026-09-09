@@ -1,16 +1,20 @@
 extern crate capstone;
 
+use crate::presentation::{blank, field, heading, line};
 use crate::utils::bytes_to_hex::bytes_to_hex;
 use anyhow::Result;
 use capstone::prelude::*;
 use capstone::{Endian, Syntax};
-use tabled::settings::{Remove, Settings, Style, object::Rows};
+use tabled::settings::{Settings, Style};
 use tabled::{Table, Tabled};
 
 #[derive(Tabled)]
 struct Instruction {
+    #[tabled(rename = "Address")]
     address: String,
+    #[tabled(rename = "Instruction")]
     ins: String,
+    #[tabled(rename = "Bytes")]
     bytes: String,
 }
 
@@ -26,9 +30,7 @@ pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
 
     let insns = cs.disasm_all(buf, addr)?;
 
-    let table_config = Settings::default()
-        .with(Style::empty())
-        .with(Remove::row(Rows::first()));
+    let table_config = Settings::default().with(Style::modern());
 
     let mut instructions: Vec<Instruction> = Vec::with_capacity(insns.len());
 
@@ -44,7 +46,12 @@ pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
         });
     }
 
+    heading("Disassembly", "x86-64 · Intel syntax")?;
+    let instruction_count = instructions.len();
     let table = Table::new(instructions).with(table_config).to_string();
-    println!("{table}");
+    line(format_args!("{table}"))?;
+    blank()?;
+    field("Instructions", instruction_count)?;
+    field("Decoded bytes", buf.len())?;
     Ok(())
 }

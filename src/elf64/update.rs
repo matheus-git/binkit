@@ -1,5 +1,6 @@
 use crate::dto::update_dto::UpdateDTO;
 use crate::elf64::Elf64Binary;
+use crate::presentation::{blank, field, heading, success};
 use crate::utils::parse_hex::parse_hex_to_u64;
 use crate::utils::save_file::save_file;
 use anyhow::{Result, anyhow};
@@ -27,7 +28,11 @@ impl UpdateBinary<'_> {
             let bytes: Vec<u8> = (&*self.binary).try_into()?;
             let overwrite = self.dto.force || final_output == self.dto.file;
             save_file(final_output, &bytes, overwrite, Some(self.dto.file))?;
-            println!("Output written to: {final_output}");
+            heading("Update complete", self.dto.file)?;
+            field("Entry point", entry)?;
+            field("Output", final_output)?;
+            blank()?;
+            success("Output written atomically · permissions preserved")?;
         } else {
             return Err(anyhow!("Not found arguments"));
         }

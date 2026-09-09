@@ -18,10 +18,10 @@ impl InfoBinary<'_> {
         }
 
         if self.dto.header {
-            print_header(self.binary.get_header(), endian);
+            print_header(self.binary.get_header(), endian, self.dto.file)?;
         }
         if self.dto.programs {
-            print_program_headers(self.binary.get_program_headers(), endian);
+            print_program_headers(self.binary.get_program_headers(), endian)?;
         }
         if self.dto.sections {
             let strtab = self.binary.strtab()?;

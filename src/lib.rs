@@ -1,6 +1,7 @@
 mod disasm;
 mod dto;
 pub mod elf64;
+pub(crate) mod presentation;
 mod traits;
 mod utils;
 

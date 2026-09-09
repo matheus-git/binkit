@@ -11,6 +11,8 @@ to handle variants it cannot process safely.
 - ELF32, invalid byte-order identifiers, and non-current ELF versions are rejected.
 - The complete 64-byte ELF64 header must be present. Standard 56-byte program-header entries
   and 64-byte section-header entries are required when their corresponding tables are present.
+- Program-header and section-header tables must be contained within the file, must not overlap
+  the ELF header, and must not overlap each other.
 - Extended program-header counts, section-header counts, and section-name table indexes are
   rejected. Files with no section table remain valid when both the section offset and count
   are zero.
@@ -23,7 +25,8 @@ disassembly (`disasm --bin`) is interpreted as x86-64 machine code.
 
 Injection additionally requires the selected section (by default `.note.gnu.property`) and a
 program header with the same original file offset. If either structure is absent, injection
-fails without creating the output file.
+fails without creating the output file. Renaming the selected section to `.injected` must fit
+in its existing string-table slot without overlapping another section name.
 
 ## Compatibility boundaries
 

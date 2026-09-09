@@ -20,6 +20,7 @@ use loaders::load_elf64_section_header::LoadELF64SectionHeader;
 use std::borrow::Cow;
 use std::cmp::max;
 use std::convert::TryFrom;
+use std::ops::Range;
 
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::disasm_dto::DisasmDTO;
@@ -110,6 +111,34 @@ fn parse_section_headers<'a>(
     Ok(headers)
 }
 
+fn table_range(
+    offset: u64,
+    count: u16,
+    entry_size: u16,
+    file_len: usize,
+    table_name: &str,
+) -> Result<Option<Range<usize>>> {
+    if count == 0 {
+        return Ok(None);
+    }
+
+    let start = usize::try_from(offset)
+        .with_context(|| format!("{table_name} offset does not fit in usize"))?;
+    if start < std::mem::size_of::<LoadELF64Header>() {
+        return Err(anyhow!("{table_name} overlaps the ELF header"));
+    }
+    let length = usize::from(count)
+        .checked_mul(usize::from(entry_size))
+        .with_context(|| format!("{table_name} size overflow"))?;
+    let end = start
+        .checked_add(length)
+        .with_context(|| format!("{table_name} range overflow"))?;
+    if end > file_len {
+        return Err(anyhow!("{table_name} is outside the file bounds"));
+    }
+    Ok(Some(start..end))
+}
+
 pub const ALIGN: u64 = 0x1000;
 
 pub fn calculate_rel32(addr_base: u64, addr_target: u64) -> Result<i32> {
@@ -151,6 +180,27 @@ impl<'a> Elf64Binary<'a> {
         }
         if shnum == 0 && elf_header.e_shoff.value(&endian) != 0 {
             return Err(anyhow!("ELF64 extended section counts are not supported"));
+        }
+
+        let program_range = table_range(
+            elf_header.e_phoff.value(&endian),
+            phnum,
+            elf_header.e_phentsize.value(&endian),
+            buf.len(),
+            "Program header table",
+        )?;
+        let section_range = table_range(
+            elf_header.e_shoff.value(&endian),
+            shnum,
+            elf_header.e_shentsize.value(&endian),
+            buf.len(),
+            "Section header table",
+        )?;
+        if let (Some(program), Some(section)) = (&program_range, &section_range)
+            && program.start < section.end
+            && section.start < program.end
+        {
+            return Err(anyhow!("Program and section header tables overlap"));
         }
 
         let program_headers = parse_program_headers(buf, &elf_header, &endian)?;
@@ -548,6 +598,27 @@ mod tests {
     fn rejects_truncated_section_header_table() {
         let mut raw = minimal_elf64_header();
         raw[40..48].copy_from_slice(&64_u64.to_le_bytes());
+        raw[60..62].copy_from_slice(&1_u16.to_le_bytes());
+
+        assert!(Elf64Binary::new(&raw).is_err());
+    }
+
+    #[test]
+    fn rejects_header_tables_that_overlap_the_elf_header() {
+        let mut raw = [minimal_elf64_header().as_slice(), &[0_u8; 56]].concat();
+        raw[32..40].copy_from_slice(&32_u64.to_le_bytes());
+        raw[56..58].copy_from_slice(&1_u16.to_le_bytes());
+
+        assert!(Elf64Binary::new(&raw).is_err());
+    }
+
+    #[test]
+    fn rejects_overlapping_program_and_section_header_tables() {
+        let mut raw = vec![0_u8; 184];
+        raw[..64].copy_from_slice(&minimal_elf64_header());
+        raw[32..40].copy_from_slice(&64_u64.to_le_bytes());
+        raw[40..48].copy_from_slice(&100_u64.to_le_bytes());
+        raw[56..58].copy_from_slice(&1_u16.to_le_bytes());
         raw[60..62].copy_from_slice(&1_u16.to_le_bytes());
 
         assert!(Elf64Binary::new(&raw).is_err());

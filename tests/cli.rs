@@ -1,8 +1,9 @@
 use binkit::elf64::Elf64Binary;
 use std::fs;
+use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
@@ -138,9 +139,10 @@ fn info_prints_all_requested_header_groups() {
 
     assert_success(&output);
     let output = stdout(&output);
-    assert!(output.contains("Elf header:"));
-    assert!(output.contains("Program headers:"));
-    assert!(output.contains("Section headers:"));
+    assert!(output.contains("ELF64 header"));
+    assert!(output.contains("Program headers  1 total"));
+    assert!(output.contains("Section headers  3 total"));
+    assert!(output.contains("Entry point"));
     assert!(output.contains(".note.gnu.property"));
 }
 
@@ -154,8 +156,33 @@ fn disasm_accepts_raw_machine_code() {
 
     assert_success(&output);
     let output = stdout(&output);
+    assert!(output.contains("Disassembly  x86-64 · Intel syntax"));
+    assert!(output.contains("Address"));
     assert!(output.contains("nop"));
     assert!(output.contains("ret"));
+    assert!(output.contains("Instructions       2"));
+}
+
+#[test]
+fn disasm_exits_cleanly_when_a_pipe_closes_early() {
+    let dir = TestDir::new();
+    let input = dir.path("large-code.bin");
+    fs::write(&input, vec![0x90; 64 * 1024]).unwrap();
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_binkit"))
+        .args(["disasm", input.to_str().unwrap(), "--bin"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("binkit should start");
+    let mut stdout = child.stdout.take().unwrap();
+    let mut prefix = [0_u8; 1024];
+    stdout.read_exact(&mut prefix).unwrap();
+    drop(stdout);
+
+    let output = child.wait_with_output().unwrap();
+    assert_success(&output);
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("panicked"));
 }
 
 #[test]
@@ -212,8 +239,10 @@ fn check_inject_reports_the_selected_addresses() {
 
     assert_success(&output);
     let output = stdout(&output);
-    assert!(output.contains("Injection slot available at:"));
-    assert!(output.contains("Rel32 relative to 0x401000:"));
+    assert!(output.contains("Injection plan"));
+    assert!(output.contains("Virtual address"));
+    assert!(output.contains("Return address     0x0000000000401000"));
+    assert!(output.contains("Return rel32"));
 }
 
 #[test]
@@ -233,6 +262,11 @@ fn update_changes_the_entry_point_and_produces_valid_elf() {
     ]);
 
     assert_success(&output);
+    let command_output = stdout(&output);
+    assert!(command_output.contains("Update complete"));
+    assert!(command_output.contains("Entry point"));
+    assert!(command_output.contains("0x402000"));
+    assert!(command_output.contains("Output written atomically · permissions preserved"));
     let raw = fs::read(&output_path).unwrap();
     assert_eq!(Elf64Binary::new(&raw).unwrap().entry(), 0x402000);
     let readelf = Command::new("readelf")
@@ -262,6 +296,10 @@ fn inject_adds_payload_and_produces_valid_elf_structure() {
     ]);
 
     assert_success(&output);
+    let command_output = stdout(&output);
+    assert!(command_output.contains("Injection complete"));
+    assert!(command_output.contains("Section            .injected"));
+    assert!(command_output.contains("Output written atomically · permissions preserved"));
     let raw = fs::read(&output_path).unwrap();
     assert!(raw.ends_with(&[0x90, 0xc3]));
     Elf64Binary::new(&raw).expect("injected output should remain parseable");
@@ -277,6 +315,33 @@ fn inject_adds_payload_and_produces_valid_elf_structure() {
         .unwrap();
     assert_success(&objdump);
     assert!(stdout(&objdump).contains(".injected"));
+}
+
+#[test]
+fn inject_rejects_a_section_name_slot_that_is_too_short() {
+    let dir = TestDir::new();
+    let input = dir.path("short-name.elf");
+    let payload = dir.path("payload.bin");
+    let output_path = dir.path("injected.elf");
+    let mut fixture = elf64_fixture();
+    fixture[125..128].copy_from_slice(b".x\0");
+    fs::write(&input, fixture).unwrap();
+    fs::write(&payload, [0x90]).unwrap();
+
+    let output = binkit(&[
+        "inject",
+        input.to_str().unwrap(),
+        "--inject",
+        payload.to_str().unwrap(),
+        "--section",
+        ".x",
+        "--output",
+        output_path.to_str().unwrap(),
+    ]);
+
+    assert!(!output.status.success());
+    assert!(!output_path.exists());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("too short"));
 }
 
 #[test]

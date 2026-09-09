@@ -60,3 +60,6 @@ jobs:
 
       - name: Build fuzz targets
         run: cargo fuzz build
+
+      - name: Run a bounded ELF64 fuzz campaign
+        run: cargo fuzz run elf64-roundtrip -- -max_total_time=15

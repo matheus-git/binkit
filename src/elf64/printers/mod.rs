@@ -1,3 +1,4 @@
+use crate::presentation::{blank, heading, line};
 use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;
 use crate::utils::read_cstring::read_cstring;
@@ -10,89 +11,100 @@ use anyhow::{Context, Result};
 use tabled::settings::{Settings, Style};
 use tabled::{Table, Tabled};
 
-pub fn print_header(header: &Elf64Header, endian: &Endian) {
+pub fn print_header(header: &Elf64Header, endian: &Endian, file: &str) -> Result<()> {
     #[derive(Tabled)]
     struct HeaderField<'a> {
+        #[tabled(rename = "Field")]
         name: &'a str,
+        #[tabled(rename = "Value")]
         describe: String,
     }
 
     let fields = vec![
         HeaderField {
-            name: "e_ident",
+            name: "Identification",
             describe: header.e_ident.describe(endian),
         },
         HeaderField {
-            name: "e_type",
+            name: "Type",
             describe: header.e_type.describe(endian),
         },
         HeaderField {
-            name: "e_machine",
+            name: "Machine",
             describe: header.e_machine.describe(endian),
         },
         HeaderField {
-            name: "e_version",
+            name: "Version",
             describe: header.e_version.describe(endian),
         },
         HeaderField {
-            name: "e_entry",
+            name: "Entry point",
             describe: header.e_entry.describe(endian),
         },
         HeaderField {
-            name: "e_phoff",
+            name: "Program table offset",
             describe: header.e_phoff.describe(endian),
         },
         HeaderField {
-            name: "e_shoff",
+            name: "Section table offset",
             describe: header.e_shoff.describe(endian),
         },
         HeaderField {
-            name: "e_flags",
+            name: "Flags",
             describe: header.e_flags.describe(endian),
         },
         HeaderField {
-            name: "e_ehsize",
+            name: "Header size",
             describe: header.e_ehsize.describe(endian),
         },
         HeaderField {
-            name: "e_phentsize",
+            name: "Program entry size",
             describe: header.e_phentsize.describe(endian),
         },
         HeaderField {
-            name: "e_phnum",
+            name: "Program headers",
             describe: header.e_phnum.describe(endian),
         },
         HeaderField {
-            name: "e_shentsize",
+            name: "Section entry size",
             describe: header.e_shentsize.describe(endian),
         },
         HeaderField {
-            name: "e_shnum",
+            name: "Section headers",
             describe: header.e_shnum.describe(endian),
         },
         HeaderField {
-            name: "e_shstrndx",
+            name: "Section names index",
             describe: header.e_shstrndx.describe(endian),
         },
     ];
 
     let table_config = Settings::default().with(Style::modern());
     let table = Table::new(fields).with(table_config).to_string();
-    println!("Elf header:");
-    println!("{table}");
+    heading("ELF64 header", file)?;
+    line(format_args!("{table}"))?;
+    Ok(())
 }
 
-pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) {
+pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) -> Result<()> {
     #[derive(Tabled)]
     #[allow(clippy::struct_field_names)]
     struct ProgramHeaderFields {
+        #[tabled(rename = "Type")]
         p_type: String,
+        #[tabled(rename = "Offset")]
         p_offset: String,
+        #[tabled(rename = "Virtual address")]
         p_vaddr: String,
+        #[tabled(rename = "Physical address")]
         p_paddr: String,
+        #[tabled(rename = "File size")]
         p_filesz: String,
+        #[tabled(rename = "Memory size")]
         p_memsz: String,
+        #[tabled(rename = "Flags")]
         p_flags: String,
+        #[tabled(rename = "Alignment")]
         p_align: String,
     }
 
@@ -115,8 +127,10 @@ pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) {
 
     let table = Table::new(fields).with(table_config).to_string();
 
-    println!("\nProgram headers:");
-    println!("{table}");
+    blank()?;
+    heading("Program headers", &format!("{} total", phs.len()))?;
+    line(format_args!("{table}"))?;
+    Ok(())
 }
 
 pub fn print_section_headers(
@@ -127,15 +141,25 @@ pub fn print_section_headers(
     #[derive(Tabled)]
     #[allow(clippy::struct_field_names)]
     struct SectionHeaderFields {
+        #[tabled(rename = "Name")]
         sh_name: String,
+        #[tabled(rename = "Type")]
         sh_type: String,
+        #[tabled(rename = "Flags")]
         sh_flags: String,
+        #[tabled(rename = "Address")]
         sh_addr: String,
+        #[tabled(rename = "Offset")]
         sh_offset: String,
+        #[tabled(rename = "Size")]
         sh_size: String,
+        #[tabled(rename = "Link")]
         sh_link: String,
+        #[tabled(rename = "Info")]
         sh_info: String,
+        #[tabled(rename = "Alignment")]
         sh_addralign: String,
+        #[tabled(rename = "Entry size")]
         sh_entsize: String,
     }
 
@@ -166,7 +190,8 @@ pub fn print_section_headers(
 
     let table = Table::new(fields).with(table_config).to_string();
 
-    println!("\nSection headers:");
-    println!("{table}");
+    blank()?;
+    heading("Section headers", &format!("{} total", shs.len()))?;
+    line(format_args!("{table}"))?;
     Ok(())
 }

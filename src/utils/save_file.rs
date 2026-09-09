@@ -6,6 +6,16 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
+#[cfg(unix)]
+fn sync_parent(path: &Path) -> io::Result<()> {
+    fs::File::open(path.parent().unwrap_or_else(|| Path::new(".")))?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_parent(_path: &Path) -> io::Result<()> {
+    Ok(())
+}
+
 fn temporary_path(destination: &Path) -> io::Result<PathBuf> {
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
     let name = destination.file_name().ok_or_else(|| {
@@ -46,11 +56,12 @@ pub fn save_file(
         output.sync_all()?;
 
         if overwrite {
-            fs::rename(&temporary, destination)
+            fs::rename(&temporary, destination)?;
         } else {
             fs::hard_link(&temporary, destination)?;
-            fs::remove_file(&temporary)
+            fs::remove_file(&temporary)?;
         }
+        sync_parent(destination)
     })();
 
     if result.is_err() {
