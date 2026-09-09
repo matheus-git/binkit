@@ -87,7 +87,7 @@ impl InjectBinary<'_> {
             let note_section = &mut self.binary.section_headers[section_index];
             return Err(anyhow!(
                 "Program header not found! {}",
-                &note_section.sh_offset.describe(endian)
+                note_section.sh_offset.describe(endian)
             ));
         }
 
@@ -122,7 +122,7 @@ impl InjectBinary<'_> {
             }
         }
 
-        save_file(self.dto.output, &injected)?;
+        save_file(self.dto.output, &injected, self.dto.force)?;
         println!("Output written to: {}", self.dto.output);
 
         Ok(())
