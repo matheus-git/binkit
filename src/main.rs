@@ -1,10 +1,5 @@
-use binkit::disasm::disass;
-use binkit::dto::check_inject_dto::CheckInjectDTO;
-use binkit::dto::disasm_dto::DisasmDTO;
-use binkit::dto::info_dto::InfoDTO;
-use binkit::dto::inject_dto::InjectDTO;
-use binkit::dto::update_dto::UpdateDTO;
 use binkit::elf64::Elf64Binary;
+use binkit::{CheckInjectDTO, DisasmDTO, InfoDTO, InjectDTO, UpdateDTO, disass};
 
 use std::fs;
 

@@ -1,30 +1,31 @@
-pub mod check_inject;
-pub mod disasm;
-pub mod info;
-pub mod inject;
+mod check_inject;
+mod disasm;
+mod info;
+mod inject;
 mod loaders;
-pub mod printers;
-pub mod types;
-pub mod update;
+mod printers;
+mod types;
+mod update;
+
+pub use check_inject::CheckInjectBinary;
+pub use disasm::DisasmBinary;
+pub use info::InfoBinary;
+pub use inject::InjectBinary;
+pub use update::UpdateBinary;
 
 use anyhow::{Context, Result, anyhow};
-use disasm::DisasmBinary;
-use info::InfoBinary;
-use inject::InjectBinary;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
 use loaders::load_elf64_section_header::LoadELF64SectionHeader;
 use std::borrow::Cow;
 use std::cmp::max;
 use std::convert::TryFrom;
-use update::UpdateBinary;
 
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::dto::disasm_dto::DisasmDTO;
 use crate::dto::info_dto::InfoDTO;
 use crate::dto::inject_dto::InjectDTO;
 use crate::dto::update_dto::UpdateDTO;
-use crate::elf64::check_inject::CheckInjectBinary;
 use crate::traits::binary::Binary;
 use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;

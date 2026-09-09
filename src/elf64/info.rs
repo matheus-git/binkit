@@ -13,15 +13,19 @@ impl InfoBinary<'_> {
     pub fn execute(&self) -> Result<()> {
         let endian = &self.binary.endian();
 
+        if !self.dto.header && !self.dto.programs && !self.dto.sections {
+            return Err(anyhow!("At least one info option must be selected"));
+        }
+
         if self.dto.header {
             print_header(self.binary.get_header(), endian);
-        } else if self.dto.programs {
+        }
+        if self.dto.programs {
             print_program_headers(self.binary.get_program_headers(), endian);
-        } else if self.dto.sections {
+        }
+        if self.dto.sections {
             let strtab = self.binary.strtab()?;
             print_section_headers(self.binary.get_section_headers(), endian, strtab)?;
-        } else {
-            return Err(anyhow!("Unknown info argument!"));
         }
 
         Ok(())
