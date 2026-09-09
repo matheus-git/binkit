@@ -25,3 +25,6 @@ target
 # Added by cargo
 
 /target
+/fuzz/artifacts
+/fuzz/corpus
+/fuzz/target
