@@ -29,14 +29,14 @@ enum Commands {
         #[arg(
             short = 'a',
             long,
-            help = "Address to inject at (hexadecimal). Overrides section if provided"
+            help = "Virtual address to assign to the injected payload (hexadecimal)"
         )]
         address: Option<String>,
 
         #[arg(
             short = 's',
             long,
-            help = "Section name to inject into. Used if address is not provided"
+            help = "Section header to repurpose (default: .note.gnu.property)"
         )]
         section: Option<String>,
 

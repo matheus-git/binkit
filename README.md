@@ -1,124 +1,160 @@
 # Binkit
 
-![rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 
-A modular toolbox for analyzing, disassembling, and patching binary formats. Currently, binkit supports ELF64 only.
+Binkit is a Rust command-line toolbox for inspecting, disassembling, and modifying ELF64
+binaries. It can display ELF metadata, disassemble x86-64 code, calculate an injection plan,
+append a payload, and update the executable entry point.
 
-**Do not use binkit to modify or inject code into third-party software without permission, as doing so may be illegal and could result in criminal or civil liability. This project is intended for educational, research, and security analysis purposes only.**
+> Use Binkit only with software you own or are authorized to analyze. Modifying or injecting
+> code into third-party software without permission may be illegal. This project is intended
+> for education, research, and authorized security analysis.
 
-## Usage
+## Features
 
-### Info
+- Display complete ELF64, program-header, and section-header information.
+- Disassemble ELF sections or raw x86-64 machine code using Intel syntax.
+- Calculate aligned payload addresses and signed `rel32` return offsets.
+- Append a payload by repurposing a compatible section and program header.
+- Update the ELF entry point.
+- Protect existing output files unless `--force` is explicitly provided.
+- Write files atomically while preserving the source permissions.
+- Reject malformed or unsupported ELF structures with descriptive errors.
 
-Display the complete ELF64 header, program-header table, or section-header table. Options can
-be combined in one invocation:
+See [ELF compatibility](docs/elf-compatibility.md) for the exact supported formats and current
+limitations.
 
-```sh
-binkit info <FILE> --header
-binkit info <FILE> --programs
-binkit info <FILE> --sections
-binkit info <FILE> --header --programs --sections
-```
-
-The header table includes the ELF identification fields, architecture, entry point, table
-offsets, entry sizes, counts, flags, and section-name table index. Numeric addresses and offsets
-are displayed in hexadecimal.
-
-### Terminal output
-
-Binkit uses a compact table layout and highlights important addresses and successful operations
-when standard output is connected to a terminal. Color is disabled automatically when output is
-redirected or piped, keeping the result suitable for text-processing tools:
-
-```sh
-binkit info ./program --sections | less
-binkit disasm ./program --section .text | head -n 20
-```
-
-Set [`NO_COLOR`](https://no-color.org/) to disable color explicitly. Setting `TERM=dumb` also
-produces plain output:
-
-```sh
-NO_COLOR=1 binkit info ./program --header
-```
-
-Closing a pipeline early is handled as a normal condition, so commands such as `head` do not
-cause a panic.
-
-### Inject 
-
-Code injection is performed at the end of the binary, and then one of the program and section headers are modified to point to the injected code.
-The command returns the address where the code was inserted and a reference to the original entry point or address.
-A common workflow is to update the file’s entry point with ``binkit update``, then later return to the original entry point.
-The ``binkit check-inject`` command performs a pre-check of which addresses will be used so you can edit or prepare the payload before injection.
-The modified section will be renamed to `.injected`.
-Use ``--help`` for more options.
-
-```sh
-binkit inject <FILE> --inject <BIN_FILE> --output <OUTPUT>
-```
-
-Existing output files are protected by default. Pass `--force` only when you intentionally want to replace one. Output is written atomically and inherits the source ELF permissions.
-
-### Check Inject
-
-Shows injection address and a relative reference to the return address (defaults to the entry point).
-
-```sh
-binkit check-inject <FILE>
-binkit check-inject <FILE> --return-address <HEX_ADDRESS>
-```
-
-### Disassembler
-
-Displays all instructions for the x86_64 architecture (for now) using Intel syntax. You can choose which section to disassemble.
-
-```sh
-binkit disasm <FILE> --section <SECTION>
-binkit disasm <RAW_BINARY> --bin
-```
-
-### Update
-
-Update binary (currently only changes the entry point).
-
-```sh
-binkit update <FILE> --entry <HEX_ADDRESS>
-```
-
-Use `--output <OUTPUT>` to preserve the input file. Updating in place is supported; replacing a separate existing output requires `--force`.
-
-## Library
-
-Binkit can also be used as a Rust library:
-
-```rust
-use binkit::elf64::Elf64Binary;
-
-let bytes = std::fs::read("program")?;
-let binary = Elf64Binary::new(&bytes)?;
-println!("Entry point: 0x{:X}", binary.entry());
-# Ok::<(), anyhow::Error>(())
-```
-    
-## Install
-
-### Download
-
-Download the binary from [Releases](https://github.com/matheus-git/binkit/releases)
-
-### Build
-
-    cargo build --release
-    ./target/release/binkit -h
+## Installation
 
 ### Cargo
 
-    cargo install --locked binkit
+```sh
+cargo install --locked binkit
+```
+
+### Build from source
+
+```sh
+git clone https://github.com/matheus-git/binkit.git
+cd binkit
+cargo build --release --locked
+./target/release/binkit --help
+```
+
+Prebuilt binaries may also be available on the
+[GitHub Releases](https://github.com/matheus-git/binkit/releases) page.
+
+## Commands
+
+Run `binkit --help` or `binkit <COMMAND> --help` for the complete CLI reference.
+
+### Inspect ELF metadata
+
+The `info` command displays the complete ELF header and its program or section tables. Options
+can be combined:
+
+```sh
+binkit info ./program --header
+binkit info ./program --programs
+binkit info ./program --sections
+binkit info ./program --header --programs --sections
+```
+
+The header output includes identification fields, byte order, ABI, file type, architecture,
+entry point, flags, table offsets, entry sizes, counts, and the section-name table index.
+
+### Disassemble code
+
+Disassemble `.text` or another section from a little-endian x86-64 ELF file:
+
+```sh
+binkit disasm ./program
+binkit disasm ./program --section .init
+```
+
+Disassemble a file containing raw x86-64 machine code:
+
+```sh
+binkit disasm ./payload.bin --bin
+```
+
+### Check an injection plan
+
+Calculate the aligned injection address and the signed `rel32` displacement back to the current
+entry point:
+
+```sh
+binkit check-inject ./program
+binkit check-inject ./program --return-address 0x401000
+```
+
+This command only reports values; it does not modify or create a file.
+
+### Inject a payload
+
+Append a payload and write the modified ELF to a new file:
+
+```sh
+binkit inject ./program \
+  --inject ./payload.bin \
+  --output ./program.injected
+```
+
+By default, Binkit repurposes `.note.gnu.property`, renames it to `.injected`, and assigns an
+aligned virtual address. Select another compatible section or address when needed:
+
+```sh
+binkit inject ./program \
+  --inject ./payload.bin \
+  --section .custom-note \
+  --address 0x405000 \
+  --return-address 0x401000 \
+  --output ./program.injected
+```
+
+Injection requires the selected section to have a matching program header and enough space in
+the section-name string table for `.injected`. The command fails without creating the output if
+these requirements are not met.
+
+Existing destinations are protected. Use `--force` only when replacement is intentional:
+
+```sh
+binkit inject ./program -i ./payload.bin -o ./program.injected --force
+```
+
+The payload is appended as provided. Binkit reports the injection address and return displacement
+but does not generate a jump, trampoline, or architecture-specific payload instructions.
+
+### Update the entry point
+
+Write a new ELF entry point to a separate output file:
+
+```sh
+binkit update ./program --entry 0x405000 --output ./program.updated
+```
+
+Omitting `--output` updates the input path atomically. Replacing a different existing destination
+requires `--force`.
+
+## Library usage
+
+The ELF64 parser and core calculations are available as a Rust library:
+
+```rust
+use binkit::elf64::{Elf64Binary, calculate_rel32};
+
+let bytes = std::fs::read("program")?;
+let binary = Elf64Binary::new(&bytes)?;
+
+println!("Entry point: 0x{:X}", binary.entry());
+println!("rel32: {}", calculate_rel32(0x405000, binary.entry())?);
+
+# Ok::<(), anyhow::Error>(())
+```
 
 ## Development
 
-Run the same checks enforced by CI:
+Rust stable is required. Run the same quality checks used by CI:
 
 ```sh
 cargo fmt --all -- --check
@@ -127,20 +163,28 @@ cargo test --all-targets --all-features
 cargo build --release --locked
 ```
 
-See [ELF compatibility](docs/elf-compatibility.md) for supported file variants and
-operation-specific restrictions.
-
-The CLI integration suite uses `readelf`, `objdump`, GCC, Clang, and lld. On Debian or Ubuntu, install them with:
+The integration tests also use GNU binutils, GCC, Clang, and lld. On Debian or Ubuntu:
 
 ```sh
+sudo apt-get update
 sudo apt-get install binutils build-essential clang lld
 ```
 
+The fuzz target requires nightly Rust and `cargo-fuzz`:
 
-## Updates and Contributing
+```sh
+cargo install cargo-fuzz --locked
+cargo +nightly fuzz run elf64-roundtrip
+```
 
-This is a work-in-progress project, new features will be added over time. If you want to contribute, you can add support for other formats, such as PE or ELF32, or create an issue suggesting a feature you'd like to implement.
+Generated fuzz corpora, artifacts, and build output are ignored by Git.
 
-## 📝 License
+## Contributing
 
-This project is open-source under the MIT License.
+Contributions should include tests for behavior changes and pass the formatting, lint, test, and
+release-build commands above. Useful areas include additional ELF validation, executable
+injection fixtures, architecture support, structured output, and other binary formats.
+
+## License
+
+Licensed under the [MIT License](LICENSE).
