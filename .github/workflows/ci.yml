@@ -25,8 +25,8 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      - name: Install ELF validation tools
-        run: sudo apt-get update && sudo apt-get install --yes binutils
+      - name: Install compiler and ELF validation tools
+        run: sudo apt-get update && sudo apt-get install --yes binutils build-essential clang lld
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
