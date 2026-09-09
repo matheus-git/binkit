@@ -139,7 +139,7 @@ fn info_prints_all_requested_header_groups() {
 
     assert_success(&output);
     let output = stdout(&output);
-    assert!(output.contains("ELF64 header"));
+    assert!(output.contains("◆ binkit  ELF64"));
     assert!(output.contains("Program headers  1 total"));
     assert!(output.contains("Section headers  3 total"));
     assert!(output.contains("Entry point"));

@@ -1,5 +1,6 @@
 use crate::presentation::{blank, heading, line};
 use crate::traits::header_field::HeaderField;
+use crate::utils::bytes_to_hex::bytes_to_hex;
 use crate::utils::endian::Endian;
 use crate::utils::read_cstring::read_cstring;
 
@@ -13,75 +14,119 @@ use tabled::{Table, Tabled};
 
 pub fn print_header(header: &Elf64Header, endian: &Endian, file: &str) -> Result<()> {
     #[derive(Tabled)]
-    struct HeaderField<'a> {
+    struct HeaderField {
         #[tabled(rename = "Field")]
-        name: &'a str,
+        field: &'static str,
         #[tabled(rename = "Value")]
-        describe: String,
+        value: String,
     }
 
-    let fields = vec![
+    let byte_order = match endian {
+        Endian::Little => "little-endian",
+        Endian::Big => "big-endian",
+    };
+    let os_abi = match header.e_ident.raw[7] {
+        0 => "System V",
+        1 => "HP-UX",
+        2 => "NetBSD",
+        3 => "Linux",
+        6 => "Solaris",
+        8 => "IRIX",
+        9 => "FreeBSD",
+        10 => "Tru64",
+        97 => "ARM",
+        255 => "Standalone",
+        _ => "Unknown",
+    };
+
+    heading(
+        "ELF64",
+        &format!(
+            "{file} · {} · {byte_order}",
+            header.e_machine.describe(endian)
+        ),
+    )?;
+    let fields = [
         HeaderField {
-            name: "Identification",
-            describe: header.e_ident.describe(endian),
+            field: "Magic",
+            value: bytes_to_hex(&header.e_ident.raw[0..4]),
         },
         HeaderField {
-            name: "Type",
-            describe: header.e_type.describe(endian),
+            field: "Class",
+            value: "ELF64".to_string(),
         },
         HeaderField {
-            name: "Machine",
-            describe: header.e_machine.describe(endian),
+            field: "Byte order",
+            value: byte_order.to_string(),
         },
         HeaderField {
-            name: "Version",
-            describe: header.e_version.describe(endian),
+            field: "Identification version",
+            value: header.e_ident.raw[6].to_string(),
         },
         HeaderField {
-            name: "Entry point",
-            describe: header.e_entry.describe(endian),
+            field: "OS/ABI",
+            value: os_abi.to_string(),
         },
         HeaderField {
-            name: "Program table offset",
-            describe: header.e_phoff.describe(endian),
+            field: "ABI version",
+            value: header.e_ident.raw[8].to_string(),
         },
         HeaderField {
-            name: "Section table offset",
-            describe: header.e_shoff.describe(endian),
+            field: "Type",
+            value: header.e_type.describe(endian),
         },
         HeaderField {
-            name: "Flags",
-            describe: header.e_flags.describe(endian),
+            field: "Machine",
+            value: header.e_machine.describe(endian),
         },
         HeaderField {
-            name: "Header size",
-            describe: header.e_ehsize.describe(endian),
+            field: "Version",
+            value: header.e_version.describe(endian),
         },
         HeaderField {
-            name: "Program entry size",
-            describe: header.e_phentsize.describe(endian),
+            field: "Entry point",
+            value: header.e_entry.describe(endian),
         },
         HeaderField {
-            name: "Program headers",
-            describe: header.e_phnum.describe(endian),
+            field: "Program header offset",
+            value: format!("0x{:X}", header.e_phoff.value(endian)),
         },
         HeaderField {
-            name: "Section entry size",
-            describe: header.e_shentsize.describe(endian),
+            field: "Section header offset",
+            value: format!("0x{:X}", header.e_shoff.value(endian)),
         },
         HeaderField {
-            name: "Section headers",
-            describe: header.e_shnum.describe(endian),
+            field: "Flags",
+            value: format!("0x{:X}", header.e_flags.value(endian)),
         },
         HeaderField {
-            name: "Section names index",
-            describe: header.e_shstrndx.describe(endian),
+            field: "Header size",
+            value: format!("{} B", header.e_ehsize.value(endian)),
+        },
+        HeaderField {
+            field: "Program header size",
+            value: format!("{} B", header.e_phentsize.value(endian)),
+        },
+        HeaderField {
+            field: "Program header count",
+            value: header.e_phnum.value(endian).to_string(),
+        },
+        HeaderField {
+            field: "Section header size",
+            value: format!("{} B", header.e_shentsize.value(endian)),
+        },
+        HeaderField {
+            field: "Section header count",
+            value: header.e_shnum.value(endian).to_string(),
+        },
+        HeaderField {
+            field: "Section names index",
+            value: format!("index {}", header.e_shstrndx.value(endian)),
         },
     ];
-
-    let table_config = Settings::default().with(Style::modern());
-    let table = Table::new(fields).with(table_config).to_string();
-    heading("ELF64 header", file)?;
+    let table = Table::new(fields)
+        .with(Settings::default().with(Style::psql()))
+        .to_string();
     line(format_args!("{table}"))?;
     Ok(())
 }
@@ -108,7 +153,7 @@ pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) -> Res
         p_align: String,
     }
 
-    let table_config = Settings::default().with(Style::modern());
+    let table_config = Settings::default().with(Style::psql());
 
     let mut fields: Vec<ProgramHeaderFields> = Vec::with_capacity(phs.len());
 
@@ -163,7 +208,7 @@ pub fn print_section_headers(
         sh_entsize: String,
     }
 
-    let table_config = Settings::default().with(Style::modern());
+    let table_config = Settings::default().with(Style::psql());
 
     let mut fields: Vec<SectionHeaderFields> = Vec::with_capacity(shs.len());
 

@@ -1,5 +1,19 @@
 use std::fmt::Arguments;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
+
+fn colors_enabled() -> bool {
+    io::stdout().is_terminal()
+        && std::env::var_os("NO_COLOR").is_none()
+        && std::env::var_os("TERM").is_none_or(|term| term != "dumb")
+}
+
+fn paint(code: &str, value: impl std::fmt::Display) -> String {
+    if colors_enabled() {
+        format!("\x1b[{code}m{value}\x1b[0m")
+    } else {
+        value.to_string()
+    }
+}
 
 pub fn line(arguments: Arguments<'_>) -> io::Result<()> {
     let result = writeln!(io::stdout().lock(), "{arguments}");
@@ -14,18 +28,28 @@ pub fn blank() -> io::Result<()> {
 }
 
 pub fn heading(title: &str, context: &str) -> io::Result<()> {
+    let brand = paint("36", "◆ binkit");
+    let title = paint("1", title);
     if context.is_empty() {
-        line(format_args!("{title}"))?;
+        line(format_args!("{brand}  {title}"))?;
     } else {
-        line(format_args!("{title}  {context}"))?;
+        line(format_args!("{brand}  {title}  {}", paint("2", context)))?;
     }
-    line(format_args!("{}", "─".repeat(64)))
+    line(format_args!("{}", paint("2", "─".repeat(64))))
 }
 
 pub fn field(label: &str, value: impl std::fmt::Display) -> io::Result<()> {
-    line(format_args!("{label:<18} {value}"))
+    line(format_args!("{:<18} {value}", paint("2", label)))
+}
+
+pub fn accent_field(label: &str, value: impl std::fmt::Display) -> io::Result<()> {
+    line(format_args!(
+        "{:<18} {}",
+        paint("2", label),
+        paint("36", value)
+    ))
 }
 
 pub fn success(message: impl std::fmt::Display) -> io::Result<()> {
-    line(format_args!("✓ {message}"))
+    line(format_args!("{} {message}", paint("32", "✓")))
 }

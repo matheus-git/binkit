@@ -30,7 +30,7 @@ pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
 
     let insns = cs.disasm_all(buf, addr)?;
 
-    let table_config = Settings::default().with(Style::modern());
+    let table_config = Settings::default().with(Style::psql());
 
     let mut instructions: Vec<Instruction> = Vec::with_capacity(insns.len());
 

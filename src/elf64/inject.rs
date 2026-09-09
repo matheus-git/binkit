@@ -1,6 +1,6 @@
 use crate::dto::inject_dto::InjectDTO;
 use crate::elf64::{ALIGN, Elf64Binary, calculate_rel32};
-use crate::presentation::{blank, field, heading, success};
+use crate::presentation::{accent_field, blank, field, heading, success};
 use crate::traits::header_field::HeaderField;
 use crate::utils::parse_hex::parse_hex_to_u64;
 use crate::utils::save_file::save_file;
@@ -170,7 +170,7 @@ impl InjectBinary<'_> {
             format_args!("{} ({} bytes)", self.dto.inject, bytes.len()),
         )?;
         field("Section", ".injected")?;
-        field("Virtual address", format_args!("0x{address:016X}"))?;
+        accent_field("Virtual address", format_args!("0x{address:016X}"))?;
         field("Return address", format_args!("0x{return_address:016X}"))?;
         field("Return rel32", format_args!("{rel32_addr:+#010X}"))?;
         field("Output", self.dto.output)?;

@@ -1,6 +1,6 @@
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::elf64::{Elf64Binary, calculate_rel32};
-use crate::presentation::{field, heading};
+use crate::presentation::{accent_field, field, heading};
 use crate::utils::parse_hex::parse_hex_to_u64;
 use anyhow::{Context, Result};
 
@@ -24,7 +24,7 @@ impl CheckInjectBinary<'_> {
             .context("Failed to determine injection address")?;
         let rel32_addr = calculate_rel32(addr, return_address)?;
         heading("Injection plan", self.dto.file)?;
-        field("Virtual address", format_args!("0x{addr:016X}"))?;
+        accent_field("Virtual address", format_args!("0x{addr:016X}"))?;
         field("Return address", format_args!("0x{return_address:016X}"))?;
         field("Return rel32", format_args!("{rel32_addr:+#010X}"))?;
 

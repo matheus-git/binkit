@@ -10,10 +10,41 @@ A modular toolbox for analyzing, disassembling, and patching binary formats. Cur
 
 ### Info
 
-    binkit info <FILE> --header    
-    binkit info <FILE> --programs
-    binkit info <FILE> --sections
-    
+Display the complete ELF64 header, program-header table, or section-header table. Options can
+be combined in one invocation:
+
+```sh
+binkit info <FILE> --header
+binkit info <FILE> --programs
+binkit info <FILE> --sections
+binkit info <FILE> --header --programs --sections
+```
+
+The header table includes the ELF identification fields, architecture, entry point, table
+offsets, entry sizes, counts, flags, and section-name table index. Numeric addresses and offsets
+are displayed in hexadecimal.
+
+### Terminal output
+
+Binkit uses a compact table layout and highlights important addresses and successful operations
+when standard output is connected to a terminal. Color is disabled automatically when output is
+redirected or piped, keeping the result suitable for text-processing tools:
+
+```sh
+binkit info ./program --sections | less
+binkit disasm ./program --section .text | head -n 20
+```
+
+Set [`NO_COLOR`](https://no-color.org/) to disable color explicitly. Setting `TERM=dumb` also
+produces plain output:
+
+```sh
+NO_COLOR=1 binkit info ./program --header
+```
+
+Closing a pipeline early is handled as a normal condition, so commands such as `head` do not
+cause a panic.
+
 ### Inject 
 
 Code injection is performed at the end of the binary, and then one of the program and section headers are modified to point to the injected code.
@@ -23,7 +54,9 @@ The ``binkit check-inject`` command performs a pre-check of which addresses will
 The modified section will be renamed to `.injected`.
 Use ``--help`` for more options.
 
-    binkit inject <FILE> --inject <BIN_FILE> --output <OUTPUT>
+```sh
+binkit inject <FILE> --inject <BIN_FILE> --output <OUTPUT>
+```
 
 Existing output files are protected by default. Pass `--force` only when you intentionally want to replace one. Output is written atomically and inherits the source ELF permissions.
 
@@ -31,20 +64,27 @@ Existing output files are protected by default. Pass `--force` only when you int
 
 Shows injection address and a relative reference to the return address (defaults to the entry point).
 
-    binkit check-inject <FILE>
-    binkit check-inject <FILE> --return-address <HEX_ADDRESS>
+```sh
+binkit check-inject <FILE>
+binkit check-inject <FILE> --return-address <HEX_ADDRESS>
+```
 
 ### Disassembler
 
 Displays all instructions for the x86_64 architecture (for now) using Intel syntax. You can choose which section to disassemble.
 
-    binkit disasm <FILE> --section <SECTION>
+```sh
+binkit disasm <FILE> --section <SECTION>
+binkit disasm <RAW_BINARY> --bin
+```
 
 ### Update
 
 Update binary (currently only changes the entry point).
 
-    binkit update <FILE> --entry <HEX_ADDRESS> 
+```sh
+binkit update <FILE> --entry <HEX_ADDRESS>
+```
 
 Use `--output <OUTPUT>` to preserve the input file. Updating in place is supported; replacing a separate existing output requires `--force`.
 
