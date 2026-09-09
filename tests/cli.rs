@@ -318,6 +318,64 @@ fn inject_adds_payload_and_produces_valid_elf_structure() {
 }
 
 #[test]
+fn injected_payload_executes_from_the_updated_entry_point() {
+    let dir = TestDir::new();
+    let source = dir.path("fixture.c");
+    let input = dir.path("fixture");
+    let payload = dir.path("exit-42.bin");
+    let output_path = dir.path("fixture.injected");
+    fs::write(&source, "int main(void) { return 0; }\n").unwrap();
+
+    let compile = Command::new("gcc")
+        .args([
+            "-no-pie",
+            "-fcf-protection=full",
+            source.to_str().unwrap(),
+            "-o",
+            input.to_str().unwrap(),
+        ])
+        .output()
+        .expect("gcc should start");
+    assert_success(&compile);
+
+    let raw = fs::read(&input).unwrap();
+    let injection_address = Elf64Binary::new(&raw)
+        .unwrap()
+        .get_address_to_inject()
+        .unwrap();
+
+    // mov edi, 42; mov eax, 60; syscall
+    fs::write(
+        &payload,
+        [
+            0xbf, 0x2a, 0x00, 0x00, 0x00, 0xb8, 0x3c, 0x00, 0x00, 0x00, 0x0f, 0x05,
+        ],
+    )
+    .unwrap();
+
+    let inject = binkit(&[
+        "inject",
+        input.to_str().unwrap(),
+        "--inject",
+        payload.to_str().unwrap(),
+        "--output",
+        output_path.to_str().unwrap(),
+    ]);
+    assert_success(&inject);
+
+    let entry = format!("0x{injection_address:X}");
+    let update = binkit(&["update", output_path.to_str().unwrap(), "--entry", &entry]);
+    assert_success(&update);
+
+    let execution = Command::new(&output_path)
+        .output()
+        .expect("injected executable should start");
+    assert_eq!(execution.status.code(), Some(42));
+    assert!(execution.stdout.is_empty());
+    assert!(execution.stderr.is_empty());
+}
+
+#[test]
 fn inject_rejects_a_section_name_slot_that_is_too_short() {
     let dir = TestDir::new();
     let input = dir.path("short-name.elf");

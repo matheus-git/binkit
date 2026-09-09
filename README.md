@@ -163,7 +163,9 @@ cargo test --all-targets --all-features
 cargo build --release --locked
 ```
 
-The integration tests also use GNU binutils, GCC, Clang, and lld. On Debian or Ubuntu:
+The integration tests also use GNU binutils, GCC, Clang, and lld. They compile several ELF64
+variants and execute an injected x86-64 fixture to verify the modified entry point and payload.
+On Debian or Ubuntu:
 
 ```sh
 sudo apt-get update
