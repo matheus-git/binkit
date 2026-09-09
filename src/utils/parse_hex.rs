@@ -24,6 +24,7 @@ pub fn parse_hex_to_u64(s: &str) -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::parse_hex_to_u64;
+    use proptest::prelude::*;
 
     #[test]
     fn parses_lowercase_prefix() {
@@ -54,5 +55,14 @@ mod tests {
     #[test]
     fn rejects_u64_overflow() {
         assert!(parse_hex_to_u64("10000000000000000").is_err());
+    }
+
+    proptest! {
+        #[test]
+        fn formatted_u64_values_round_trip(value in any::<u64>()) {
+            prop_assert_eq!(parse_hex_to_u64(&format!("{value:X}")).unwrap(), value);
+            prop_assert_eq!(parse_hex_to_u64(&format!("0x{value:x}")).unwrap(), value);
+            prop_assert_eq!(parse_hex_to_u64(&format!("0X{value:X}")).unwrap(), value);
+        }
     }
 }

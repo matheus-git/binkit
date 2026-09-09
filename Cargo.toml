@@ -19,3 +19,6 @@ anyhow = "1.0.100"
 [profile.release]
 opt-level = "z"
 lto = true
+
+[dev-dependencies]
+proptest = "1.11.0"
