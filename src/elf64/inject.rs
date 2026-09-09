@@ -1,6 +1,7 @@
 use crate::dto::inject_dto::InjectDTO;
 use crate::elf64::{ALIGN, Elf64Binary, calculate_rel32};
 use crate::traits::header_field::HeaderField;
+use crate::utils::parse_hex::parse_hex_to_u64;
 use crate::utils::save_file::save_file;
 use anyhow::{Context, Result, anyhow};
 use std::borrow::Cow;
@@ -97,12 +98,12 @@ impl InjectBinary<'_> {
         let bytes = fs::read(self.dto.inject)?;
 
         let address = match self.dto.address {
-            Some(a) => u64::from_str_radix(a.trim_start_matches("0x"), 16)?,
+            Some(a) => parse_hex_to_u64(a)?,
             None => self.binary.get_address_to_inject()?,
         };
 
         let return_address = match self.dto.return_address {
-            Some(a) => u64::from_str_radix(a.trim_start_matches("0x"), 16)?,
+            Some(a) => parse_hex_to_u64(a)?,
             None => self.binary.entry(),
         };
 

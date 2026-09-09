@@ -1,5 +1,6 @@
 use crate::dto::check_inject_dto::CheckInjectDTO;
 use crate::elf64::{Elf64Binary, calculate_rel32};
+use crate::utils::parse_hex::parse_hex_to_u64;
 use anyhow::{Context, Result};
 
 pub struct CheckInjectBinary<'a> {
@@ -11,8 +12,7 @@ impl CheckInjectBinary<'_> {
     pub fn execute(&self) -> Result<()> {
         let default_return_address = self.binary.entry();
         let return_address = if let Some(s) = self.dto.return_address {
-            u64::from_str_radix(s.trim_start_matches("0x"), 16)
-                .context("Invalid hexadecimal value for return_address")?
+            parse_hex_to_u64(s).context("Invalid hexadecimal value for return_address")?
         } else {
             default_return_address
         };
