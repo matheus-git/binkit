@@ -1,22 +1,15 @@
-mod disasm;
-mod dto;
-mod elf64;
-mod traits;
-mod utils;
-
-use dto::disasm_dto::DisasmDTO;
-use elf64::Elf64Binary;
+use binkit::disasm::disass;
+use binkit::dto::check_inject_dto::CheckInjectDTO;
+use binkit::dto::disasm_dto::DisasmDTO;
+use binkit::dto::info_dto::InfoDTO;
+use binkit::dto::inject_dto::InjectDTO;
+use binkit::dto::update_dto::UpdateDTO;
+use binkit::elf64::Elf64Binary;
 
 use std::fs;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-
-use crate::disasm::disass;
-use crate::dto::check_inject_dto::CheckInjectDTO;
-use crate::dto::info_dto::InfoDTO;
-use crate::dto::inject_dto::InjectDTO;
-use crate::dto::update_dto::UpdateDTO;
 
 #[derive(Parser)]
 struct Cli {
