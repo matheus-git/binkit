@@ -1,6 +1,6 @@
 extern crate plain;
-use plain::Plain;
 use anyhow::{Result, anyhow};
+use plain::Plain;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub struct LoadELF64Header {
 unsafe impl Plain for LoadELF64Header {}
 
 impl LoadELF64Header {
-	pub fn from_bytes(buf: &[u8]) -> Result<&LoadELF64Header> {
-		plain::from_bytes(buf).map_err(|e| anyhow!("{e:?}"))
-	}
+    pub fn from_bytes(buf: &[u8]) -> Result<&LoadELF64Header> {
+        plain::from_bytes(buf).map_err(|e| anyhow!("{e:?}"))
+    }
 }

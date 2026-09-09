@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub enum PFlagsValue {
@@ -20,9 +20,15 @@ impl PFlagsValue {
     pub fn from_raw(raw: [u8; 4], endian: &Endian) -> Vec<Self> {
         let mask = endian.read_u32(raw);
         let mut flags = Vec::new();
-        if mask & 0x4 != 0 { flags.push(PFlagsValue::R); }
-        if mask & 0x2 != 0 { flags.push(PFlagsValue::W); }
-        if mask & 0x1 != 0 { flags.push(PFlagsValue::X); }
+        if mask & 0x4 != 0 {
+            flags.push(PFlagsValue::R);
+        }
+        if mask & 0x2 != 0 {
+            flags.push(PFlagsValue::W);
+        }
+        if mask & 0x1 != 0 {
+            flags.push(PFlagsValue::X);
+        }
         flags
     }
 }
@@ -34,9 +40,7 @@ pub struct PFlags<'a> {
 
 impl<'a> PFlags<'a> {
     pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
-        Self { 
-            raw
-        }
+        Self { raw }
     }
 }
 
@@ -48,7 +52,11 @@ impl HeaderField for PFlags<'_> {
             "None".to_string()
         } else {
             #[allow(clippy::redundant_closure_for_method_calls)]
-            values.iter().map(|f| f.as_str()).collect::<Vec<_>>().join(" | ")
+            values
+                .iter()
+                .map(|f| f.as_str())
+                .collect::<Vec<_>>()
+                .join(" | ")
         }
     }
     fn value(&self, endian: &Endian) -> Self::Value {

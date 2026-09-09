@@ -1,12 +1,12 @@
 use crate::traits::header_field::HeaderField;
-use std::borrow::Cow;
 use crate::utils::endian::Endian;
+use std::borrow::Cow;
 use std::fmt;
 
 #[derive(Debug)]
 pub enum EVersionValue {
     None,
-    Current
+    Current,
 }
 
 impl EVersionValue {
@@ -24,7 +24,6 @@ impl fmt::Display for EVersionValue {
     }
 }
 
-
 #[derive(Debug)]
 pub struct EVersion<'a> {
     pub raw: Cow<'a, [u8; 4]>,
@@ -32,9 +31,7 @@ pub struct EVersion<'a> {
 
 impl<'a> EVersion<'a> {
     pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 }
 
@@ -46,7 +43,7 @@ impl HeaderField for EVersion<'_> {
     fn value(&self, endian: &Endian) -> Self::Value {
         match endian.read_u32(*self.raw) {
             1 => EVersionValue::Current,
-            _ => EVersionValue::None
+            _ => EVersionValue::None,
         }
     }
 }

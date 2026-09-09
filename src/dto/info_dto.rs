@@ -1,6 +1,6 @@
 pub struct InfoDTO<'a> {
-    pub file:&'a str,
+    pub file: &'a str,
     pub header: bool,
     pub programs: bool,
-    pub sections: bool
+    pub sections: bool,
 }

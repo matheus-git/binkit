@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 use std::fmt;
 
 #[derive(Debug)]
@@ -8,7 +8,7 @@ pub enum ETypeValue {
     Rel,
     Exec,
     Dyn,
-    Core
+    Core,
 }
 
 impl ETypeValue {
@@ -18,7 +18,7 @@ impl ETypeValue {
             Self::Rel => "A relocatable file",
             Self::Exec => "An executable file",
             Self::Dyn => "A shared object",
-            Self::Core => "A core file"
+            Self::Core => "A core file",
         }
     }
 }
@@ -36,15 +36,13 @@ pub struct EType<'a> {
 
 impl<'a> EType<'a> {
     pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
-        Self { 
-            raw
-        }
+        Self { raw }
     }
 }
 
 impl HeaderField for EType<'_> {
     type Value = ETypeValue;
-    fn describe(&self,endian: &Endian) -> String {
+    fn describe(&self, endian: &Endian) -> String {
         self.value(endian).as_str().to_string()
     }
     fn value(&self, endian: &Endian) -> Self::Value {
@@ -53,7 +51,7 @@ impl HeaderField for EType<'_> {
             2 => ETypeValue::Exec,
             3 => ETypeValue::Dyn,
             4 => ETypeValue::Core,
-            _ => ETypeValue::None
+            _ => ETypeValue::None,
         }
     }
 }

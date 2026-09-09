@@ -1,6 +1,6 @@
 extern crate plain;
-use plain::Plain;
 use anyhow::{Result, anyhow};
+use plain::Plain;
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
@@ -25,4 +25,3 @@ impl LoadELF64SectionHeader {
         plain::from_bytes(buf).map_err(|e| anyhow!("{e:?}"))
     }
 }
-

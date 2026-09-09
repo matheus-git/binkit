@@ -1,13 +1,12 @@
-use crate::elf64::printers::{print_program_headers, print_section_headers};
-use crate::{dto::info_dto::InfoDTO, elf64::printers::print_header};
 use crate::elf64::Elf64Binary;
+use crate::elf64::printers::{print_program_headers, print_section_headers};
 use crate::traits::binary::Binary;
+use crate::{dto::info_dto::InfoDTO, elf64::printers::print_header};
 use anyhow::{Result, anyhow};
-
 
 pub struct InfoBinary<'a> {
     pub binary: &'a Elf64Binary<'a>,
-    pub dto: InfoDTO<'a>
+    pub dto: InfoDTO<'a>,
 }
 
 impl InfoBinary<'_> {

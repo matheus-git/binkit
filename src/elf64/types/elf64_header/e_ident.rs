@@ -1,12 +1,12 @@
-use std::borrow::Cow;
-use crate::{traits::header_field::HeaderField, utils::endian::Endian};
 use crate::utils::bytes_to_hex::bytes_to_hex;
+use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug)]
 enum EiClass {
     Class32,
     Class64,
-    ClassNone
+    ClassNone,
 }
 
 impl EiClass {
@@ -14,7 +14,7 @@ impl EiClass {
         match self {
             Self::Class32 => "Elf32",
             Self::Class64 => "Elf64",
-            Self::ClassNone => "None"
+            Self::ClassNone => "None",
         }
     }
 }
@@ -22,8 +22,8 @@ impl EiClass {
 #[derive(Debug)]
 enum EiData {
     DataNone,
-    Data2LSB, 
-    Data2MSB  
+    Data2LSB,
+    Data2MSB,
 }
 
 impl EiData {
@@ -39,7 +39,7 @@ impl EiData {
 #[derive(Debug)]
 enum EiVersion {
     None,
-    Current
+    Current,
 }
 
 #[derive(Debug)]
@@ -82,9 +82,7 @@ pub struct EIdent<'a> {
 
 impl<'a> EIdent<'a> {
     pub fn new(raw: Cow<'a, [u8; 16]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 
     fn ei_class(&self) -> EiClass {
@@ -106,7 +104,7 @@ impl<'a> EIdent<'a> {
     pub fn endian(&self) -> Endian {
         match &self.ei_data() {
             EiData::DataNone | EiData::Data2LSB => Endian::Little,
-            EiData::Data2MSB => Endian::Big
+            EiData::Data2MSB => Endian::Big,
         }
     }
 
@@ -156,4 +154,3 @@ impl From<&EIdent<'_>> for Vec<u8> {
         h.raw.to_vec()
     }
 }
-

@@ -1,9 +1,9 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
 pub enum ShFlagsValue {
-    A, 
+    A,
     W,
     X,
     M,
@@ -20,13 +20,21 @@ impl ShFlagsValue {
     }
 
     pub fn from_raw(raw: [u8; 8], endian: &Endian) -> Vec<Self> {
-        let mask = endian.read_u64(raw); 
+        let mask = endian.read_u64(raw);
         let mut flags = Vec::new();
 
-        if mask & 0x1 != 0 { flags.push(Self::W); }
-        if mask & 0x2 != 0 { flags.push(Self::A); }
-        if mask & 0x4 != 0 { flags.push(Self::X); }
-        if mask & !(0x1 | 0x2 | 0x4) != 0 { flags.push(Self::M); }
+        if mask & 0x1 != 0 {
+            flags.push(Self::W);
+        }
+        if mask & 0x2 != 0 {
+            flags.push(Self::A);
+        }
+        if mask & 0x4 != 0 {
+            flags.push(Self::X);
+        }
+        if mask & !(0x1 | 0x2 | 0x4) != 0 {
+            flags.push(Self::M);
+        }
 
         flags
     }
@@ -39,13 +47,11 @@ pub struct ShFlags<'a> {
 
 impl<'a> ShFlags<'a> {
     pub fn new(raw: Cow<'a, [u8; 8]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 }
 
-impl HeaderField for ShFlags<'_>{
+impl HeaderField for ShFlags<'_> {
     type Value = Vec<ShFlagsValue>;
     fn describe(&self, endian: &Endian) -> String {
         let values = self.value(endian);
@@ -63,4 +69,3 @@ impl HeaderField for ShFlags<'_>{
         ShFlagsValue::from_raw(*self.raw, endian)
     }
 }
-

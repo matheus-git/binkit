@@ -36,7 +36,7 @@ pub struct Elf64SectionHeader<'a> {
     pub sh_link: ShLink<'a>,
     pub sh_info: ShInfo<'a>,
     pub sh_addralign: ShAddralign<'a>,
-    pub sh_entsize: ShEntsize<'a>
+    pub sh_entsize: ShEntsize<'a>,
 }
 
 impl<'a> Elf64SectionHeader<'a> {

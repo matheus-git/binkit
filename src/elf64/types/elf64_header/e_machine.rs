@@ -1,6 +1,6 @@
-use std::fmt;
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum EMachineValue {
@@ -64,9 +64,7 @@ pub struct EMachine<'a> {
 
 impl<'a> EMachine<'a> {
     pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 }
 
@@ -76,7 +74,7 @@ impl HeaderField for EMachine<'_> {
         self.value(endian).as_str().to_string()
     }
     fn value(&self, endian: &Endian) -> Self::Value {
-       match endian.read_u16(*self.raw) {
+        match endian.read_u16(*self.raw) {
             1 => EMachineValue::M32,
             2 => EMachineValue::Sparc,
             3 => EMachineValue::EM386,
@@ -96,7 +94,7 @@ impl HeaderField for EMachine<'_> {
             62 => EMachineValue::X86_64,
             75 => EMachineValue::Vax,
             _ => EMachineValue::None,
-        }    
+        }
     }
 }
 
@@ -105,4 +103,3 @@ impl From<&EMachine<'_>> for Vec<u8> {
         h.raw.to_vec()
     }
 }
-

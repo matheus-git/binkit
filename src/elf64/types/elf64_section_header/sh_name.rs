@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub struct ShName<'a> {
@@ -8,9 +8,7 @@ pub struct ShName<'a> {
 
 impl<'a> ShName<'a> {
     pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 }
 
@@ -22,4 +20,4 @@ impl HeaderField for ShName<'_> {
     fn value(&self, endian: &Endian) -> Self::Value {
         endian.read_u32(*self.raw)
     }
-} 
+}

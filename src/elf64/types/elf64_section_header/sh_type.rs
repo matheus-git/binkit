@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
 pub enum ShTypeValue {
@@ -14,7 +14,7 @@ pub enum ShTypeValue {
     NoBits,
     Rel,
     DynSym,
-    Other(()), 
+    Other(()),
 }
 
 impl ShTypeValue {
@@ -60,9 +60,7 @@ pub struct ShType<'a> {
 
 impl<'a> ShType<'a> {
     pub fn new(raw: Cow<'a, [u8; 4]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 }
 

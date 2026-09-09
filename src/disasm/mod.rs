@@ -1,11 +1,11 @@
 extern crate capstone;
 
-use capstone::prelude::*;
-use capstone::{Syntax, Endian};
-use tabled::{Table, Tabled};
-use tabled::settings::{Settings, Remove,object::Rows, Style};
 use crate::utils::bytes_to_hex::bytes_to_hex;
 use anyhow::Result;
+use capstone::prelude::*;
+use capstone::{Endian, Syntax};
+use tabled::settings::{Remove, Settings, Style, object::Rows};
+use tabled::{Table, Tabled};
 
 #[derive(Tabled)]
 struct Instruction {
@@ -21,31 +21,27 @@ pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
         .detail(true)
         .build()?;
 
-    cs.
-        set_syntax(Syntax::Intel)?;
-    cs
-        .set_endian(Endian::Little)?;
+    cs.set_syntax(Syntax::Intel)?;
+    cs.set_endian(Endian::Little)?;
 
     let insns = cs.disasm_all(buf, addr)?;
 
     let table_config = Settings::default()
-            .with(Style::empty())
-            .with(Remove::row(Rows::first()));
+        .with(Style::empty())
+        .with(Remove::row(Rows::first()));
 
     let mut instructions: Vec<Instruction> = Vec::with_capacity(insns.len());
 
     for i in insns.iter() {
-        instructions.push(
-            Instruction { 
-                address: format!("0x{:X}", i.address()),
-                bytes: bytes_to_hex(i.bytes()), 
-                ins: format!(
-                    "{} {}",
-                    i.mnemonic().unwrap_or("<unknown>"),
-                    i.op_str().unwrap_or("")
-                )
-            }
-        );
+        instructions.push(Instruction {
+            address: format!("0x{:X}", i.address()),
+            bytes: bytes_to_hex(i.bytes()),
+            ins: format!(
+                "{} {}",
+                i.mnemonic().unwrap_or("<unknown>"),
+                i.op_str().unwrap_or("")
+            ),
+        });
     }
 
     let table = Table::new(instructions).with(table_config).to_string();

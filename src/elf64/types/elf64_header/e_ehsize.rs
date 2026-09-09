@@ -1,16 +1,14 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug)]
-pub struct EEhsize<'a>{
+pub struct EEhsize<'a> {
     pub raw: Cow<'a, [u8; 2]>,
 }
 
 impl<'a> EEhsize<'a> {
     pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
-        Self { 
-            raw, 
-        }
+        Self { raw }
     }
 }
 

@@ -1,23 +1,23 @@
-mod p_type;
-mod p_paddr;
-mod p_flags;
 mod p_align;
 mod p_filesz;
+mod p_flags;
 mod p_memsz;
 mod p_offset;
+mod p_paddr;
+mod p_type;
 mod p_vaddr;
 
 use std::borrow::Cow;
 
+use super::super::LoadELF64ProgramHeader;
 use p_align::PAlign;
-use p_type::PType;
-use p_paddr::PPaddr;
-use p_flags::PFlags;
 use p_filesz::PFilesz;
+use p_flags::PFlags;
 use p_memsz::PMemsz;
 use p_offset::POffset;
+use p_paddr::PPaddr;
+use p_type::PType;
 use p_vaddr::PVaddr;
-use super::super::LoadELF64ProgramHeader;
 
 #[derive(Debug)]
 #[allow(clippy::struct_field_names)]
@@ -29,12 +29,12 @@ pub struct Elf64ProgramHeader<'a> {
     pub p_paddr: PPaddr<'a>,
     pub p_filesz: PFilesz<'a>,
     pub p_memsz: PMemsz<'a>,
-    pub p_align: PAlign<'a>
+    pub p_align: PAlign<'a>,
 }
 
 impl<'a> Elf64ProgramHeader<'a> {
     pub fn new(load: &'a LoadELF64ProgramHeader) -> Self {
-        Self { 
+        Self {
             p_type: PType::new(Cow::Borrowed(&load.p_type)),
             p_flags: PFlags::new(Cow::Borrowed(&load.p_flags)),
             p_offset: POffset::new(Cow::Borrowed(&load.p_offset)),

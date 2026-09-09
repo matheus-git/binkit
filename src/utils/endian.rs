@@ -69,7 +69,10 @@ mod tests {
     fn reads_unsigned_values_in_both_byte_orders() {
         assert_eq!(Endian::Little.read_u16([0x34, 0x12]), 0x1234);
         assert_eq!(Endian::Big.read_u16([0x12, 0x34]), 0x1234);
-        assert_eq!(Endian::Little.read_u32([0x78, 0x56, 0x34, 0x12]), 0x1234_5678);
+        assert_eq!(
+            Endian::Little.read_u32([0x78, 0x56, 0x34, 0x12]),
+            0x1234_5678
+        );
         assert_eq!(Endian::Big.read_u32([0x12, 0x34, 0x56, 0x78]), 0x1234_5678);
         assert_eq!(
             Endian::Little.read_u64([0xef, 0xcd, 0xab, 0x89, 0x67, 0x45, 0x23, 0x01]),
@@ -85,16 +88,28 @@ mod tests {
     fn writes_unsigned_values_in_both_byte_orders() {
         assert_eq!(Endian::Little.to_bytes_u16(0x1234), [0x34, 0x12]);
         assert_eq!(Endian::Big.to_bytes_u16(0x1234), [0x12, 0x34]);
-        assert_eq!(Endian::Little.to_bytes_u32(0x1234_5678), [0x78, 0x56, 0x34, 0x12]);
-        assert_eq!(Endian::Big.to_bytes_u32(0x1234_5678), [0x12, 0x34, 0x56, 0x78]);
+        assert_eq!(
+            Endian::Little.to_bytes_u32(0x1234_5678),
+            [0x78, 0x56, 0x34, 0x12]
+        );
+        assert_eq!(
+            Endian::Big.to_bytes_u32(0x1234_5678),
+            [0x12, 0x34, 0x56, 0x78]
+        );
     }
 
     #[test]
     fn writes_signed_values_without_losing_twos_complement() {
         assert_eq!(Endian::Little.to_bytes_i32(-2), [0xfe, 0xff, 0xff, 0xff]);
         assert_eq!(Endian::Big.to_bytes_i32(-2), [0xff, 0xff, 0xff, 0xfe]);
-        assert_eq!(Endian::Little.to_bytes_i64(-2), [0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
-        assert_eq!(Endian::Big.to_bytes_i64(-2), [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe]);
+        assert_eq!(
+            Endian::Little.to_bytes_i64(-2),
+            [0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]
+        );
+        assert_eq!(
+            Endian::Big.to_bytes_i64(-2),
+            [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe]
+        );
     }
 
     #[test]

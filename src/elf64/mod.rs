@@ -1,28 +1,26 @@
-mod loaders;
-pub mod types;
-pub mod printers;
-pub mod disasm;
-pub mod update;
-pub mod info;
 pub mod check_inject;
+pub mod disasm;
+pub mod info;
 pub mod inject;
+mod loaders;
+pub mod printers;
+pub mod types;
+pub mod update;
 
-use std::borrow::Cow;
+use anyhow::{Context, Result, anyhow};
 use disasm::DisasmBinary;
-use update::UpdateBinary;
 use info::InfoBinary;
 use inject::InjectBinary;
-use std::cmp::max;
 use loaders::load_elf64_header::LoadELF64Header;
 use loaders::load_elf64_program_header::LoadELF64ProgramHeader;
 use loaders::load_elf64_section_header::LoadELF64SectionHeader;
-use anyhow::{Context, Result, anyhow};
+use std::borrow::Cow;
+use std::cmp::max;
 use std::convert::TryFrom;
+use update::UpdateBinary;
 
-use types::elf64_header::Elf64Header;
-use types::elf64_program_header::Elf64ProgramHeader;
-use types::elf64_section_header::Elf64SectionHeader;
 use crate::dto::check_inject_dto::CheckInjectDTO;
+use crate::dto::disasm_dto::DisasmDTO;
 use crate::dto::info_dto::InfoDTO;
 use crate::dto::inject_dto::InjectDTO;
 use crate::dto::update_dto::UpdateDTO;
@@ -31,28 +29,40 @@ use crate::traits::binary::Binary;
 use crate::traits::header_field::HeaderField;
 use crate::utils::endian::Endian;
 use crate::utils::read_cstring::read_cstring;
-use crate::dto::disasm_dto::DisasmDTO;
+use types::elf64_header::Elf64Header;
+use types::elf64_program_header::Elf64ProgramHeader;
+use types::elf64_section_header::Elf64SectionHeader;
 
-fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Result<Vec<Elf64ProgramHeader<'a>>> {
+fn parse_program_headers<'a>(
+    buf: &'a [u8],
+    elf_header: &Elf64Header,
+    endian: &Endian,
+) -> Result<Vec<Elf64ProgramHeader<'a>>> {
     let phnum = elf_header.e_phnum.value(endian) as usize;
     let phoff = usize::try_from(elf_header.e_phoff.value(endian))
         .context("Failed to read the program header offset")?;
     let phentsize = elf_header.e_phentsize.value(endian) as usize;
 
     if phnum > 0 && phentsize != std::mem::size_of::<LoadELF64ProgramHeader>() {
-        return Err(anyhow!("Invalid ELF64 program header entry size: {phentsize}"));
+        return Err(anyhow!(
+            "Invalid ELF64 program header entry size: {phentsize}"
+        ));
     }
 
     let mut headers = Vec::with_capacity(phnum);
 
     for i in 0..phnum {
-        let entry_offset = i.checked_mul(phentsize)
+        let entry_offset = i
+            .checked_mul(phentsize)
             .context("Program header table offset overflow")?;
-        let start = phoff.checked_add(entry_offset)
+        let start = phoff
+            .checked_add(entry_offset)
             .context("Program header table offset overflow")?;
-        let end = start.checked_add(phentsize)
+        let end = start
+            .checked_add(phentsize)
             .context("Program header range overflow")?;
-        let raw = buf.get(start..end)
+        let raw = buf
+            .get(start..end)
             .context("ELF file is truncated in the program header table")?;
 
         let raw_header = LoadELF64ProgramHeader::from_bytes(raw)?;
@@ -62,24 +72,34 @@ fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
     Ok(headers)
 }
 
-fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &Endian) -> Result<Vec<Elf64SectionHeader<'a>>> {
+fn parse_section_headers<'a>(
+    buf: &'a [u8],
+    elf_header: &Elf64Header,
+    endian: &Endian,
+) -> Result<Vec<Elf64SectionHeader<'a>>> {
     let shnum = elf_header.e_shnum.value(endian) as usize;
     let shoff = usize::try_from(elf_header.e_shoff.value(endian))
         .context("Failed to read the section header offset")?;
     let shentsize = elf_header.e_shentsize.value(endian) as usize;
     if shnum > 0 && shentsize != std::mem::size_of::<LoadELF64SectionHeader>() {
-        return Err(anyhow!("Invalid ELF64 section header entry size: {shentsize}"));
+        return Err(anyhow!(
+            "Invalid ELF64 section header entry size: {shentsize}"
+        ));
     }
     let mut headers = Vec::with_capacity(shnum);
 
     for i in 0..shnum {
-        let entry_offset = i.checked_mul(shentsize)
+        let entry_offset = i
+            .checked_mul(shentsize)
             .context("Section header table offset overflow")?;
-        let start = shoff.checked_add(entry_offset)
+        let start = shoff
+            .checked_add(entry_offset)
             .context("Section header table offset overflow")?;
-        let end = start.checked_add(shentsize)
+        let end = start
+            .checked_add(shentsize)
             .context("Section header range overflow")?;
-        let raw = buf.get(start..end)
+        let raw = buf
+            .get(start..end)
             .context("ELF file is truncated in the section header table")?;
 
         let raw_header = LoadELF64SectionHeader::from_bytes(raw)?;
@@ -101,12 +121,12 @@ pub struct Elf64Binary<'a> {
     header: Elf64Header<'a>,
     program_headers: Vec<Elf64ProgramHeader<'a>>,
     section_headers: Vec<Elf64SectionHeader<'a>>,
-    raw: Cow<'a, [u8]>
+    raw: Cow<'a, [u8]>,
 }
 
 impl<'a> Elf64Binary<'a> {
     pub fn new(buf: &'a [u8]) -> Result<Self> {
-        let load_elf_header =  LoadELF64Header::from_bytes(buf)?;
+        let load_elf_header = LoadELF64Header::from_bytes(buf)?;
         if &load_elf_header.e_ident[0..4] != b"\x7fELF" {
             return Err(anyhow!("Invalid ELF magic"));
         }
@@ -118,24 +138,23 @@ impl<'a> Elf64Binary<'a> {
         }
         let elf_header = Elf64Header::new(load_elf_header);
         let endian: Endian = elf_header.e_ident.endian();
-        
+
         let program_headers = parse_program_headers(buf, &elf_header, &endian)?;
         let section_headers = parse_section_headers(buf, &elf_header, &endian)?;
 
-        Ok(
-            Self { 
-                header: elf_header, 
-                program_headers,
-                section_headers,
-                raw: Cow::Borrowed(buf)
-            }
-        )
+        Ok(Self {
+            header: elf_header,
+            program_headers,
+            section_headers,
+            raw: Cow::Borrowed(buf),
+        })
     }
 
     pub fn strtab(&'a self) -> Result<&'a [u8]> {
         let endian = &self.endian();
         let strtab_section_index = self.header.e_shstrndx.value(endian) as usize;
-        let strtab_section = self.section_headers
+        let strtab_section = self
+            .section_headers
             .get(strtab_section_index)
             .context("String table section index is out of bounds")?;
 
@@ -143,16 +162,23 @@ impl<'a> Elf64Binary<'a> {
             .context("strtab offset does not fit in usize")?;
         let strtab_section_size = usize::try_from(strtab_section.sh_size.value(endian))
             .context("strtab size does not fit in usize")?;
-        let strtab_end = strtab_section_offset.checked_add(strtab_section_size)
+        let strtab_end = strtab_section_offset
+            .checked_add(strtab_section_size)
             .context("String table range overflow")?;
 
-        self.raw.get(strtab_section_offset..strtab_end)
+        self.raw
+            .get(strtab_section_offset..strtab_end)
             .ok_or(anyhow!("String table is outside the file bounds"))
     }
 
-    pub fn resolve_section_name(&self, section: &Elf64SectionHeader, endian: &Endian) -> Result<&str>{
+    pub fn resolve_section_name(
+        &self,
+        section: &Elf64SectionHeader,
+        endian: &Endian,
+    ) -> Result<&str> {
         let strtab_section_index = self.header.e_shstrndx.value(endian) as usize;
-        let strtab_section = self.section_headers
+        let strtab_section = self
+            .section_headers
             .get(strtab_section_index)
             .context("String table section index is out of bounds")?;
 
@@ -166,17 +192,19 @@ impl<'a> Elf64Binary<'a> {
         if sh_name_index >= strtab_section_size {
             return Err(anyhow!("Section name offset is outside the string table"));
         }
-        let start = strtab_section_offset.checked_add(sh_name_index)
+        let start = strtab_section_offset
+            .checked_add(sh_name_index)
             .context("Section name offset overflow")?;
-        let strtab_end = strtab_section_offset.checked_add(strtab_section_size)
+        let strtab_end = strtab_section_offset
+            .checked_add(strtab_section_size)
             .context("String table range overflow")?;
 
-        let raw_name = &self.raw
+        let raw_name = &self
+            .raw
             .get(start..strtab_end)
             .context("Section name offset is outside the file bounds")?;
 
-        let name = read_cstring(raw_name)
-            .context("Invalid section name")?;
+        let name = read_cstring(raw_name).context("Invalid section name")?;
         Ok(name)
     }
 
@@ -185,38 +213,23 @@ impl<'a> Elf64Binary<'a> {
     }
 
     pub fn disasm(&'a self, dto: DisasmDTO<'a>) -> DisasmBinary<'a> {
-        DisasmBinary {
-            binary: self,
-            dto
-        }
+        DisasmBinary { binary: self, dto }
     }
 
     pub fn update(&'a mut self, dto: UpdateDTO<'a>) -> UpdateBinary<'a> {
-        UpdateBinary {
-            binary: self,
-            dto
-        }
+        UpdateBinary { binary: self, dto }
     }
 
     pub fn info(&'a self, dto: InfoDTO<'a>) -> InfoBinary<'a> {
-        InfoBinary { 
-            binary: self, 
-            dto 
-        }
+        InfoBinary { binary: self, dto }
     }
 
     pub fn check_inject(&'a self, dto: CheckInjectDTO<'a>) -> CheckInjectBinary<'a> {
-        CheckInjectBinary { 
-            binary: self, 
-            dto 
-        }
+        CheckInjectBinary { binary: self, dto }
     }
 
     pub fn inject(&'a mut self, dto: InjectDTO<'a>) -> InjectBinary<'a> {
-        InjectBinary { 
-            binary: self, 
-            dto 
-        }
+        InjectBinary { binary: self, dto }
     }
 
     pub fn entry(&self) -> u64 {
@@ -232,24 +245,26 @@ impl<'a> Elf64Binary<'a> {
             let initial_address = endian.read_u64(*program.p_vaddr.raw);
             let memsz = max(
                 endian.read_u64(*program.p_memsz.raw),
-                endian.read_u64(*program.p_filesz.raw)
+                endian.read_u64(*program.p_filesz.raw),
             );
-            let final_address = initial_address.checked_add(memsz)
+            let final_address = initial_address
+                .checked_add(memsz)
                 .context("Program memory range overflow")?;
             if final_address > higher_addr {
                 higher_addr = final_address;
             }
-        };
-        let candidate = higher_addr.checked_add(ALIGN)
+        }
+        let candidate = higher_addr
+            .checked_add(ALIGN)
             .context("Injection address overflow")?;
         self.calculate_new_addr(candidate)
     }
 
     pub fn calculate_new_addr(&self, addr: u64) -> Result<u64> {
-        let bytes: Vec<u8> = self.try_into()
+        let bytes: Vec<u8> = self
+            .try_into()
             .context("Failed to convert binary into raw bytes")?;
-        let offset = u64::try_from(bytes.len())
-            .context("Binary too large to fit into u64")?;
+        let offset = u64::try_from(bytes.len()).context("Binary too large to fit into u64")?;
         let delta = (offset % ALIGN + ALIGN - (addr % ALIGN)) % ALIGN;
         addr.checked_add(delta).context("Aligned address overflow")
     }
@@ -275,10 +290,10 @@ impl<'a> Binary for Elf64Binary<'a> {
 
 impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
     type Error = anyhow::Error;
-    
+
     #[allow(clippy::too_many_lines)]
     fn try_from(h: &'a Elf64Binary<'a>) -> Result<Self, Self::Error> {
-    let mut bytes: Vec<u8> = Vec::with_capacity(h.raw.len());
+        let mut bytes: Vec<u8> = Vec::with_capacity(h.raw.len());
         let endian = &h.endian();
 
         let mut current_offset: usize = 0;
@@ -298,10 +313,12 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
 
         if ph_first {
             if current_offset < phoff {
-                let slice = &h.raw
+                let slice = &h
+                    .raw
                     .get(current_offset..phoff)
                     .context("raw ELF image truncated before program headers")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow while expanding bytes for inter-header gap")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -312,7 +329,8 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
 
             for ph in h.get_program_headers() {
                 let ph_bytes: Vec<u8> = ph.into();
-                let new_len = current_offset.checked_add(ph_bytes.len())
+                let new_len = current_offset
+                    .checked_add(ph_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -322,10 +340,12 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
             }
 
             if current_offset < shoff {
-                let slice = h.raw
+                let slice = h
+                    .raw
                     .get(current_offset..shoff)
                     .context("raw ELF does not contain padding before section header table")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow copying section header entry")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -336,7 +356,8 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
 
             for sh in h.get_section_headers() {
                 let sh_bytes: Vec<u8> = sh.into();
-                let new_len = current_offset.checked_add(sh_bytes.len())
+                let new_len = current_offset
+                    .checked_add(sh_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -346,10 +367,12 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
             }
         } else {
             if current_offset < shoff {
-                let slice = &h.raw
+                let slice = &h
+                    .raw
                     .get(current_offset..shoff)
                     .context("raw ELF does not contain padding before section header table")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow copying section header entry")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -360,7 +383,8 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
 
             for sh in h.get_section_headers() {
                 let sh_bytes: Vec<u8> = sh.into();
-                let new_len = current_offset.checked_add(sh_bytes.len())
+                let new_len = current_offset
+                    .checked_add(sh_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -370,10 +394,12 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
             }
 
             if current_offset < phoff {
-                let slice = h.raw
+                let slice = h
+                    .raw
                     .get(current_offset..phoff)
                     .context("raw ELF image truncated before program headers")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow while expanding bytes for inter-header gap")?;
                 bytes.resize(new_len, 0);
                 bytes[current_offset..new_len].copy_from_slice(slice);
@@ -382,7 +408,8 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
 
             for ph in h.get_program_headers() {
                 let ph_bytes: Vec<u8> = ph.into();
-                let new_len = current_offset.checked_add(ph_bytes.len())
+                let new_len = current_offset
+                    .checked_add(ph_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -390,13 +417,11 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
                 bytes[current_offset..new_len].copy_from_slice(&ph_bytes);
                 current_offset = new_len;
             }
-
         }
 
-        let slice = h.raw
-            .get(current_offset..)
-            .context("Invalid offset")?;
-        let new_len = current_offset.checked_add(slice.len())
+        let slice = h.raw.get(current_offset..).context("Invalid offset")?;
+        let new_len = current_offset
+            .checked_add(slice.len())
             .context("Overflow new len")?;
         if bytes.len() < new_len {
             bytes.resize(new_len, 0);
@@ -404,7 +429,6 @@ impl<'a> TryFrom<&'a Elf64Binary<'a>> for Vec<u8> {
         bytes[current_offset..].copy_from_slice(slice);
 
         Ok(bytes)
-
     }
 }
 
@@ -413,7 +437,7 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
 
     #[allow(clippy::too_many_lines)]
     fn try_from(h: &'a mut Elf64Binary<'a>) -> Result<Self, Self::Error> {
-    let mut bytes: Vec<u8> = Vec::with_capacity(h.raw.len());
+        let mut bytes: Vec<u8> = Vec::with_capacity(h.raw.len());
         let endian = &h.endian();
 
         let mut current_offset: usize = 0;
@@ -433,10 +457,12 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
 
         if ph_first {
             if current_offset < phoff {
-                let slice = &h.raw
+                let slice = &h
+                    .raw
                     .get(current_offset..phoff)
                     .context("raw ELF image truncated before program headers")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow while expanding bytes for inter-header gap")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -447,7 +473,8 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
 
             for ph in h.get_program_headers() {
                 let ph_bytes: Vec<u8> = ph.into();
-                let new_len = current_offset.checked_add(ph_bytes.len())
+                let new_len = current_offset
+                    .checked_add(ph_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -457,10 +484,12 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
             }
 
             if current_offset < shoff {
-                let slice = h.raw
+                let slice = h
+                    .raw
                     .get(current_offset..shoff)
                     .context("raw ELF does not contain padding before section header table")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow copying section header entry")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -471,7 +500,8 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
 
             for sh in h.get_section_headers() {
                 let sh_bytes: Vec<u8> = sh.into();
-                let new_len = current_offset.checked_add(sh_bytes.len())
+                let new_len = current_offset
+                    .checked_add(sh_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -481,10 +511,12 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
             }
         } else {
             if current_offset < shoff {
-                let slice = &h.raw
+                let slice = &h
+                    .raw
                     .get(current_offset..shoff)
                     .context("raw ELF does not contain padding before section header table")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow copying section header entry")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -495,7 +527,8 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
 
             for sh in h.get_section_headers() {
                 let sh_bytes: Vec<u8> = sh.into();
-                let new_len = current_offset.checked_add(sh_bytes.len())
+                let new_len = current_offset
+                    .checked_add(sh_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -505,10 +538,12 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
             }
 
             if current_offset < phoff {
-                let slice = h.raw
+                let slice = h
+                    .raw
                     .get(current_offset..phoff)
                     .context("raw ELF image truncated before program headers")?;
-                let new_len = current_offset.checked_add(slice.len())
+                let new_len = current_offset
+                    .checked_add(slice.len())
                     .context("offset overflow while expanding bytes for inter-header gap")?;
                 bytes.resize(new_len, 0);
                 bytes[current_offset..new_len].copy_from_slice(slice);
@@ -517,7 +552,8 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
 
             for ph in h.get_program_headers() {
                 let ph_bytes: Vec<u8> = ph.into();
-                let new_len = current_offset.checked_add(ph_bytes.len())
+                let new_len = current_offset
+                    .checked_add(ph_bytes.len())
                     .context("overflow copying section header")?;
                 if bytes.len() < new_len {
                     bytes.resize(new_len, 0);
@@ -527,10 +563,9 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
             }
         }
 
-        let slice = h.raw
-            .get(current_offset..)
-            .context("Invalid offset")?;
-        let new_len = current_offset.checked_add(slice.len())
+        let slice = h.raw.get(current_offset..).context("Invalid offset")?;
+        let new_len = current_offset
+            .checked_add(slice.len())
             .context("Overflow new len")?;
         if bytes.len() < new_len {
             bytes.resize(new_len, 0);
@@ -538,13 +573,12 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
         bytes[current_offset..].copy_from_slice(slice);
 
         Ok(bytes)
-
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{calculate_rel32, Elf64Binary};
+    use super::{Elf64Binary, calculate_rel32};
 
     fn minimal_elf64_header() -> [u8; 64] {
         let mut bytes = [0_u8; 64];

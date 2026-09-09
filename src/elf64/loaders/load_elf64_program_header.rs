@@ -1,6 +1,6 @@
 extern crate plain;
-use plain::Plain;
 use anyhow::{Result, anyhow};
+use plain::Plain;
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]

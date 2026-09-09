@@ -1,17 +1,17 @@
-mod e_ident;
-mod e_type;
-mod e_machine;
-mod e_version;
-mod e_entry;
-mod e_phoff;
-mod e_shoff;
-mod e_flags;
 mod e_ehsize;
+mod e_entry;
+mod e_flags;
+mod e_ident;
+mod e_machine;
 mod e_phentsize;
 mod e_phnum;
+mod e_phoff;
 mod e_shentsize;
 mod e_shnum;
+mod e_shoff;
 mod e_shstrndx;
+mod e_type;
+mod e_version;
 
 use std::borrow::Cow;
 
@@ -48,12 +48,12 @@ pub struct Elf64Header<'a> {
     pub e_phnum: EPhnum<'a>,
     pub e_shentsize: EShentsize<'a>,
     pub e_shnum: EShnum<'a>,
-    pub e_shstrndx: EShstrndx<'a>
+    pub e_shstrndx: EShstrndx<'a>,
 }
 
 impl<'a> Elf64Header<'a> {
     pub fn new(load: &'a LoadELF64Header) -> Self {
-        Self { 
+        Self {
             e_ident: EIdent::new(Cow::Borrowed(&load.e_ident)),
             e_type: EType::new(Cow::Borrowed(&load.e_type)),
             e_machine: EMachine::new(Cow::Borrowed(&load.e_machine)),
@@ -67,7 +67,7 @@ impl<'a> Elf64Header<'a> {
             e_phnum: EPhnum::new(Cow::Borrowed(&load.e_phnum)),
             e_shentsize: EShentsize::new(Cow::Borrowed(&load.e_shentsize)),
             e_shnum: EShnum::new(Cow::Borrowed(&load.e_shnum)),
-            e_shstrndx: EShstrndx::new(Cow::Borrowed(&load.e_shstrndx))
+            e_shstrndx: EShstrndx::new(Cow::Borrowed(&load.e_shstrndx)),
         }
     }
 }

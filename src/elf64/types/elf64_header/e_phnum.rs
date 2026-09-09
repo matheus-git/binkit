@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{traits::header_field::HeaderField, utils::endian::Endian};
+use std::borrow::Cow;
 
 #[derive(Debug)]
 pub struct EPhnum<'a> {
@@ -8,9 +8,7 @@ pub struct EPhnum<'a> {
 
 impl<'a> EPhnum<'a> {
     pub fn new(raw: Cow<'a, [u8; 2]>) -> Self {
-        Self { 
-            raw 
-        }
+        Self { raw }
     }
 }
 
