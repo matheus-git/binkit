@@ -19,8 +19,7 @@ pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
         .x86()
         .mode(arch::x86::ArchMode::Mode64)
         .detail(true)
-        .build()
-        .expect("Failed to create Capstone object");
+        .build()?;
 
     cs.
         set_syntax(Syntax::Intel)?;
@@ -40,7 +39,11 @@ pub fn disass(addr: u64, buf: &[u8]) -> Result<()> {
             Instruction { 
                 address: format!("0x{:X}", i.address()),
                 bytes: bytes_to_hex(i.bytes()), 
-                ins: format!("{} {}", i.mnemonic().unwrap(), i.op_str().unwrap())
+                ins: format!(
+                    "{} {}",
+                    i.mnemonic().unwrap_or("<unknown>"),
+                    i.op_str().unwrap_or("")
+                )
             }
         );
     }

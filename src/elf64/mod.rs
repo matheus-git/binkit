@@ -39,17 +39,23 @@ fn parse_program_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
         .context("Failed to read the program header offset")?;
     let phentsize = elf_header.e_phentsize.value(endian) as usize;
 
+    if phnum > 0 && phentsize != std::mem::size_of::<LoadELF64ProgramHeader>() {
+        return Err(anyhow!("Invalid ELF64 program header entry size: {phentsize}"));
+    }
+
     let mut headers = Vec::with_capacity(phnum);
 
     for i in 0..phnum {
-        let start = phoff + i * phentsize;
-        let end = start + phentsize;
+        let entry_offset = i.checked_mul(phentsize)
+            .context("Program header table offset overflow")?;
+        let start = phoff.checked_add(entry_offset)
+            .context("Program header table offset overflow")?;
+        let end = start.checked_add(phentsize)
+            .context("Program header range overflow")?;
+        let raw = buf.get(start..end)
+            .context("ELF file is truncated in the program header table")?;
 
-        if end > buf.len() {
-            break;
-        }
-
-        let raw_header = LoadELF64ProgramHeader::from_bytes(&buf[start..end])?;
+        let raw_header = LoadELF64ProgramHeader::from_bytes(raw)?;
         headers.push(Elf64ProgramHeader::new(raw_header));
     }
 
@@ -61,17 +67,22 @@ fn parse_section_headers<'a>(buf: &'a [u8], elf_header: &Elf64Header, endian: &E
     let shoff = usize::try_from(elf_header.e_shoff.value(endian))
         .context("Failed to read the section header offset")?;
     let shentsize = elf_header.e_shentsize.value(endian) as usize;
+    if shnum > 0 && shentsize != std::mem::size_of::<LoadELF64SectionHeader>() {
+        return Err(anyhow!("Invalid ELF64 section header entry size: {shentsize}"));
+    }
     let mut headers = Vec::with_capacity(shnum);
 
     for i in 0..shnum {
-        let start = shoff + i * shentsize;
-        let end = start + shentsize;
+        let entry_offset = i.checked_mul(shentsize)
+            .context("Section header table offset overflow")?;
+        let start = shoff.checked_add(entry_offset)
+            .context("Section header table offset overflow")?;
+        let end = start.checked_add(shentsize)
+            .context("Section header range overflow")?;
+        let raw = buf.get(start..end)
+            .context("ELF file is truncated in the section header table")?;
 
-        if end > buf.len() {
-            break;
-        }
-
-        let raw_header = LoadELF64SectionHeader::from_bytes(&buf[start..end])?;
+        let raw_header = LoadELF64SectionHeader::from_bytes(raw)?;
         headers.push(Elf64SectionHeader::new(raw_header));
     }
 
@@ -96,6 +107,15 @@ pub struct Elf64Binary<'a> {
 impl<'a> Elf64Binary<'a> {
     pub fn new(buf: &'a [u8]) -> Result<Self> {
         let load_elf_header =  LoadELF64Header::from_bytes(buf)?;
+        if &load_elf_header.e_ident[0..4] != b"\x7fELF" {
+            return Err(anyhow!("Invalid ELF magic"));
+        }
+        if load_elf_header.e_ident[4] != 2 {
+            return Err(anyhow!("Only ELF64 binaries are supported"));
+        }
+        if !matches!(load_elf_header.e_ident[5], 1 | 2) {
+            return Err(anyhow!("Invalid ELF byte order"));
+        }
         let elf_header = Elf64Header::new(load_elf_header);
         let endian: Endian = elf_header.e_ident.endian();
         
@@ -121,8 +141,13 @@ impl<'a> Elf64Binary<'a> {
 
         let strtab_section_offset = usize::try_from(strtab_section.sh_offset.value(endian))
             .context("strtab offset does not fit in usize")?;
+        let strtab_section_size = usize::try_from(strtab_section.sh_size.value(endian))
+            .context("strtab size does not fit in usize")?;
+        let strtab_end = strtab_section_offset.checked_add(strtab_section_size)
+            .context("String table range overflow")?;
 
-        self.raw.get(strtab_section_offset..).ok_or(anyhow!("Invalid strtab offset"))
+        self.raw.get(strtab_section_offset..strtab_end)
+            .ok_or(anyhow!("String table is outside the file bounds"))
     }
 
     pub fn resolve_section_name(&self, section: &Elf64SectionHeader, endian: &Endian) -> Result<&str>{
@@ -136,10 +161,18 @@ impl<'a> Elf64Binary<'a> {
         let sh_name_index = usize::try_from(section.sh_name.value(endian))
             .context("Section name index does not fit in usize")?;
 
-        let start = strtab_section_offset+sh_name_index;
+        let strtab_section_size = usize::try_from(strtab_section.sh_size.value(endian))
+            .context("strtab size does not fit in usize")?;
+        if sh_name_index >= strtab_section_size {
+            return Err(anyhow!("Section name offset is outside the string table"));
+        }
+        let start = strtab_section_offset.checked_add(sh_name_index)
+            .context("Section name offset overflow")?;
+        let strtab_end = strtab_section_offset.checked_add(strtab_section_size)
+            .context("String table range overflow")?;
 
         let raw_name = &self.raw
-            .get(start..)
+            .get(start..strtab_end)
             .context("Section name offset is outside the file bounds")?;
 
         let name = read_cstring(raw_name)
@@ -201,12 +234,15 @@ impl<'a> Elf64Binary<'a> {
                 endian.read_u64(*program.p_memsz.raw),
                 endian.read_u64(*program.p_filesz.raw)
             );
-            let final_address = initial_address + memsz;
+            let final_address = initial_address.checked_add(memsz)
+                .context("Program memory range overflow")?;
             if final_address > higher_addr {
                 higher_addr = final_address;
             }
         };
-        self.calculate_new_addr(higher_addr + ALIGN)
+        let candidate = higher_addr.checked_add(ALIGN)
+            .context("Injection address overflow")?;
+        self.calculate_new_addr(candidate)
     }
 
     pub fn calculate_new_addr(&self, addr: u64) -> Result<u64> {
@@ -215,7 +251,7 @@ impl<'a> Elf64Binary<'a> {
         let offset = u64::try_from(bytes.len())
             .context("Binary too large to fit into u64")?;
         let delta = (offset % ALIGN + ALIGN - (addr % ALIGN)) % ALIGN;
-        Ok(addr + delta)
+        addr.checked_add(delta).context("Aligned address overflow")
     }
 }
 
@@ -540,6 +576,39 @@ mod tests {
     #[test]
     fn rejects_a_truncated_elf_header() {
         assert!(Elf64Binary::new(&[0_u8; 63]).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_elf_identification() {
+        let mut raw = minimal_elf64_header();
+        raw[0] = 0;
+        assert!(Elf64Binary::new(&raw).is_err());
+
+        let mut raw = minimal_elf64_header();
+        raw[4] = 1;
+        assert!(Elf64Binary::new(&raw).is_err());
+
+        let mut raw = minimal_elf64_header();
+        raw[5] = 0;
+        assert!(Elf64Binary::new(&raw).is_err());
+    }
+
+    #[test]
+    fn rejects_truncated_program_header_table() {
+        let mut raw = minimal_elf64_header();
+        raw[32..40].copy_from_slice(&64_u64.to_le_bytes());
+        raw[56..58].copy_from_slice(&1_u16.to_le_bytes());
+
+        assert!(Elf64Binary::new(&raw).is_err());
+    }
+
+    #[test]
+    fn rejects_truncated_section_header_table() {
+        let mut raw = minimal_elf64_header();
+        raw[40..48].copy_from_slice(&64_u64.to_le_bytes());
+        raw[60..62].copy_from_slice(&1_u16.to_le_bytes());
+
+        assert!(Elf64Binary::new(&raw).is_err());
     }
 
     #[test]

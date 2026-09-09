@@ -2,7 +2,7 @@ use crate::dto::inject_dto::InjectDTO;
 use crate::elf64::{Elf64Binary, ALIGN, calculate_rel32};
 use crate::traits::header_field::HeaderField;
 use crate::utils::save_file::save_file;
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use std::fs;
 use std::borrow::Cow;
 
@@ -15,16 +15,25 @@ impl InjectBinary<'_> {
     fn update_section_name(&mut self, section_name_idx: usize) -> Result<()>{
         let endian = &self.binary.header.e_ident.endian();
 
-        let shstrtab_idx = self.binary.header.e_shstrndx.value(endian);
-        let shstrtab_section_header = &self.binary.section_headers[shstrtab_idx as usize];
+        let shstrtab_idx = usize::from(self.binary.header.e_shstrndx.value(endian));
+        let shstrtab_section_header = self.binary.section_headers
+            .get(shstrtab_idx)
+            .context("String table section index is out of bounds")?;
         let shstrtab_section_header_offset = shstrtab_section_header.sh_offset.value(endian);
         
         let new_name = ".injected\0".as_bytes(); 
         let shstrtab_section_header_offset = usize::try_from(shstrtab_section_header_offset)?;
-        let start = shstrtab_section_header_offset.checked_add(section_name_idx).ok_or(anyhow!("failed".to_string()))?;
-        let end = start + new_name.len();
+        let start = shstrtab_section_header_offset
+            .checked_add(section_name_idx)
+            .context("Section name offset overflow")?;
+        let end = start
+            .checked_add(new_name.len())
+            .context("Section name range overflow")?;
         
-        self.binary.raw.to_mut()[start..end].copy_from_slice(new_name);
+        let destination = self.binary.raw.to_mut()
+            .get_mut(start..end)
+            .context("Not enough space in the string table for the injected section name")?;
+        destination.copy_from_slice(new_name);
         Ok(())
     }
 
@@ -74,12 +83,12 @@ impl InjectBinary<'_> {
         let bytes = fs::read(self.dto.inject)?; 
 
         let address = match self.dto.address {
-            Some(a) => u64::from_str_radix(a, 16)?,  
+            Some(a) => u64::from_str_radix(a.trim_start_matches("0x"), 16)?,
             None => self.binary.get_address_to_inject()?,
         };
 
         let return_address = match self.dto.return_address {
-            Some(a) => u64::from_str_radix(a, 16)?,  
+            Some(a) => u64::from_str_radix(a.trim_start_matches("0x"), 16)?,
             None => self.binary.entry(),
         };
 

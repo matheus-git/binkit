@@ -36,7 +36,9 @@ impl DisasmBinary<'_> {
         let size = usize::try_from(section.sh_size.value(endian))
             .context("Size does not fit in usize")?;
 
-        let end = offset + size;
+        let end = offset
+            .checked_add(size)
+            .context("Section range overflows the platform address size")?;
         if end > self.binary.raw.len() {
             return Err(anyhow!(
                 "Section '{section_name}' exceeds binary bounds (0x{offset:x}..0x{end:x})"

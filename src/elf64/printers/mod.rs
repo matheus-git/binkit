@@ -5,7 +5,7 @@ use crate::utils::read_cstring::read_cstring;
 use super::types::{elf64_header::Elf64Header, elf64_program_header::Elf64ProgramHeader, elf64_section_header::Elf64SectionHeader};
 use tabled::{Table, Tabled};
 use tabled::settings::{Settings, Style};
-use anyhow::{Result};
+use anyhow::{Context, Result};
 
 pub fn print_header(header: &Elf64Header, endian: &Endian) {
     #[derive(Tabled)]
@@ -100,7 +100,12 @@ pub fn print_section_headers(shs: &[Elf64SectionHeader], endian: &Endian, strtab
     let mut fields: Vec<SectionHeaderFields> = Vec::with_capacity(shs.len());
 
     for sh in shs {
-        let sh_name = read_cstring(&strtab[sh.sh_name.value(endian) as usize..])?;
+        let name_offset = usize::try_from(sh.sh_name.value(endian))
+            .context("Section name offset does not fit in usize")?;
+        let raw_name = strtab
+            .get(name_offset..)
+            .context("Section name offset is outside the string table")?;
+        let sh_name = read_cstring(raw_name)?;
         fields.push(
             SectionHeaderFields { 
                 sh_name: sh_name.to_string(),
