@@ -20,10 +20,12 @@ Code injection is performed at the end of the binary, and then one of the progra
 The command returns the address where the code was inserted and a reference to the original entry point or address.
 A common workflow is to update the file’s entry point with ``binkit update``, then later return to the original entry point.
 The ``binkit check-inject`` command performs a pre-check of which addresses will be used so you can edit or prepare the payload before injection.
-The modified section will be renamed to ``.inject``.
+The modified section will be renamed to `.injected`.
 Use ``--help`` for more options.
 
     binkit inject <FILE> --inject <BIN_FILE> --output <OUTPUT>
+
+Existing output files are protected by default. Pass `--force` only when you intentionally want to replace one. Output is written atomically and inherits the source ELF permissions.
 
 ### Check Inject
 
@@ -43,6 +45,21 @@ Displays all instructions for the x86_64 architecture (for now) using Intel synt
 Update binary (currently only changes the entry point).
 
     binkit update <FILE> --entry <HEX_ADDRESS> 
+
+Use `--output <OUTPUT>` to preserve the input file. Updating in place is supported; replacing a separate existing output requires `--force`.
+
+## Library
+
+Binkit can also be used as a Rust library:
+
+```rust
+use binkit::elf64::Elf64Binary;
+
+let bytes = std::fs::read("program")?;
+let binary = Elf64Binary::new(&bytes)?;
+println!("Entry point: 0x{:X}", binary.entry());
+# Ok::<(), anyhow::Error>(())
+```
     
 ## Install
 
@@ -58,6 +75,23 @@ Download the binary from [Releases](https://github.com/matheus-git/binkit/releas
 ### Cargo
 
     cargo install --locked binkit
+
+## Development
+
+Run the same checks enforced by CI:
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+cargo build --release --locked
+```
+
+The CLI integration suite uses `readelf`, `objdump`, GCC, Clang, and lld. On Debian or Ubuntu, install them with:
+
+```sh
+sudo apt-get install binutils build-essential clang lld
+```
 
 
 ## Updates and Contributing
