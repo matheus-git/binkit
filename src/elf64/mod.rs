@@ -506,3 +506,49 @@ impl<'a> TryFrom<&'a mut Elf64Binary<'a>> for Vec<u8> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{calculate_rel32, Elf64Binary};
+
+    fn minimal_elf64_header() -> [u8; 64] {
+        let mut bytes = [0_u8; 64];
+        bytes[0..4].copy_from_slice(b"\x7fELF");
+        bytes[4] = 2;
+        bytes[5] = 1;
+        bytes[6] = 1;
+        bytes[16..18].copy_from_slice(&2_u16.to_le_bytes());
+        bytes[18..20].copy_from_slice(&62_u16.to_le_bytes());
+        bytes[20..24].copy_from_slice(&1_u32.to_le_bytes());
+        bytes[52..54].copy_from_slice(&64_u16.to_le_bytes());
+        bytes[54..56].copy_from_slice(&56_u16.to_le_bytes());
+        bytes[58..60].copy_from_slice(&64_u16.to_le_bytes());
+        bytes
+    }
+
+    #[test]
+    fn calculates_positive_and_negative_rel32_offsets() {
+        assert_eq!(calculate_rel32(0x1000, 0x1010).unwrap(), 0x10);
+        assert_eq!(calculate_rel32(0x1010, 0x1000).unwrap(), -0x10);
+    }
+
+    #[test]
+    fn rejects_offsets_outside_rel32_range() {
+        assert!(calculate_rel32(0, i32::MAX as u64 + 1).is_err());
+        assert!(calculate_rel32(i32::MAX as u64 + 2, 0).is_err());
+    }
+
+    #[test]
+    fn rejects_a_truncated_elf_header() {
+        assert!(Elf64Binary::new(&[0_u8; 63]).is_err());
+    }
+
+    #[test]
+    fn parses_and_serializes_a_minimal_elf64_header() {
+        let raw = minimal_elf64_header();
+        let binary = Elf64Binary::new(&raw).unwrap();
+        let serialized = Vec::<u8>::try_from(&binary).unwrap();
+
+        assert_eq!(serialized, raw);
+        assert_eq!(binary.entry(), 0);
+    }
+}
