@@ -26,7 +26,7 @@ impl UpdateBinary<'_> {
             self.set_entry(entry)?;
             let bytes: Vec<u8> = (&*self.binary).try_into()?;
             let overwrite = self.dto.force || final_output == self.dto.file;
-            save_file(final_output, &bytes, overwrite)?;
+            save_file(final_output, &bytes, overwrite, Some(self.dto.file))?;
             println!("Output written to: {final_output}");
         } else {
             return Err(anyhow!("Not found arguments"));

@@ -19,7 +19,12 @@ fn temporary_path(destination: &Path) -> io::Result<PathBuf> {
     )))
 }
 
-pub fn save_file(file: &str, buf: &[u8], overwrite: bool) -> Result<(), io::Error> {
+pub fn save_file(
+    file: &str,
+    buf: &[u8],
+    overwrite: bool,
+    permissions_from: Option<&str>,
+) -> Result<(), io::Error> {
     let destination = Path::new(file);
     if !overwrite && destination.exists() {
         return Err(io::Error::new(
@@ -35,6 +40,9 @@ pub fn save_file(file: &str, buf: &[u8], overwrite: bool) -> Result<(), io::Erro
             .create_new(true)
             .open(&temporary)?;
         output.write_all(buf)?;
+        if let Some(source) = permissions_from {
+            output.set_permissions(fs::metadata(source)?.permissions())?;
+        }
         output.sync_all()?;
 
         if overwrite {
@@ -57,6 +65,6 @@ mod tests {
 
     #[test]
     fn reports_an_error_when_the_destination_is_a_directory() {
-        assert!(save_file(".", b"data", true).is_err());
+        assert!(save_file(".", b"data", true, None).is_err());
     }
 }

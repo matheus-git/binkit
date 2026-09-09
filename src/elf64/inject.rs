@@ -122,7 +122,12 @@ impl InjectBinary<'_> {
             }
         }
 
-        save_file(self.dto.output, &injected, self.dto.force)?;
+        save_file(
+            self.dto.output,
+            &injected,
+            self.dto.force,
+            Some(self.dto.file),
+        )?;
         println!("Output written to: {}", self.dto.output);
 
         Ok(())

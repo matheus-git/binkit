@@ -1,5 +1,6 @@
 use binkit::elf64::Elf64Binary;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -344,4 +345,25 @@ fn update_requires_force_to_overwrite_an_existing_output() {
             .to_string_lossy()
             .contains("binkit-tmp")
     }));
+}
+
+#[test]
+fn update_preserves_source_permissions() {
+    let dir = TestDir::new();
+    let input = dir.path("fixture.elf");
+    let output_path = dir.path("updated.elf");
+    write_fixture(&input);
+    fs::set_permissions(&input, fs::Permissions::from_mode(0o750)).unwrap();
+
+    assert_success(&binkit(&[
+        "update",
+        input.to_str().unwrap(),
+        "--entry",
+        "0x402000",
+        "--output",
+        output_path.to_str().unwrap(),
+    ]));
+
+    let mode = fs::metadata(output_path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o750);
 }
