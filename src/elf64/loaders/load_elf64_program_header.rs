@@ -16,6 +16,13 @@ pub struct LoadELF64ProgramHeader {
     pub p_align: [u8; 8],
 }
 
+const _: () = {
+    assert!(std::mem::size_of::<LoadELF64ProgramHeader>() == 56);
+    assert!(std::mem::align_of::<LoadELF64ProgramHeader>() == 1);
+};
+
+// SAFETY: every field is a byte array, so every bit pattern is valid. The compile-time size and
+// alignment assertions above guarantee the packed ELF64 byte layout expected by `from_bytes`.
 unsafe impl Plain for LoadELF64ProgramHeader {}
 
 impl LoadELF64ProgramHeader {

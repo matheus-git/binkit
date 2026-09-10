@@ -1,4 +1,4 @@
-use binkit::elf64::Elf64Binary;
+use binkit::elf64::{Elf64Binary, calculate_rel32};
 use std::fs;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
@@ -372,6 +372,72 @@ fn injected_payload_executes_from_the_updated_entry_point() {
         .expect("injected executable should start");
     assert_eq!(execution.status.code(), Some(42));
     assert!(execution.stdout.is_empty());
+    assert!(execution.stderr.is_empty());
+}
+
+#[test]
+fn injected_payload_returns_to_the_original_entry_point() {
+    let dir = TestDir::new();
+    let source = dir.path("return-fixture.c");
+    let input = dir.path("return-fixture");
+    let payload = dir.path("return-payload.bin");
+    let output_path = dir.path("return-fixture.injected");
+    fs::write(
+        &source,
+        "#include <stdio.h>\nint main(void) { puts(\"original\"); return 7; }\n",
+    )
+    .unwrap();
+
+    let compile = Command::new("gcc")
+        .args([
+            "-no-pie",
+            "-fcf-protection=full",
+            source.to_str().unwrap(),
+            "-o",
+            input.to_str().unwrap(),
+        ])
+        .output()
+        .expect("gcc should start");
+    assert_success(&compile);
+
+    let raw = fs::read(&input).unwrap();
+    let binary = Elf64Binary::new(&raw).unwrap();
+    let original_entry = binary.entry();
+    let injection_address = binary.get_address_to_inject().unwrap();
+
+    // Preserve initial state, write "injected\n", restore state, then jump to the original entry.
+    let mut payload_bytes = vec![
+        0x9c, 0x50, 0x57, 0x56, 0x52, 0x51, 0x41, 0x53, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xbf, 0x01,
+        0x00, 0x00, 0x00, 0x48, 0x8d, 0x35, 0x14, 0x00, 0x00, 0x00, 0xba, 0x09, 0x00, 0x00, 0x00,
+        0x0f, 0x05, 0x41, 0x5b, 0x59, 0x5a, 0x5e, 0x5f, 0x58, 0x9d, 0xe9, 0x00, 0x00, 0x00, 0x00,
+        b'i', b'n', b'j', b'e', b'c', b't', b'e', b'd', b'\n',
+    ];
+    let address_after_jump = injection_address.checked_add(45).unwrap();
+    let jump = calculate_rel32(address_after_jump, original_entry)
+        .unwrap()
+        .to_le_bytes();
+    payload_bytes[41..45].copy_from_slice(&jump);
+    fs::write(&payload, payload_bytes).unwrap();
+
+    let inject = binkit(&[
+        "inject",
+        input.to_str().unwrap(),
+        "--inject",
+        payload.to_str().unwrap(),
+        "--output",
+        output_path.to_str().unwrap(),
+    ]);
+    assert_success(&inject);
+
+    let entry = format!("0x{injection_address:X}");
+    let update = binkit(&["update", output_path.to_str().unwrap(), "--entry", &entry]);
+    assert_success(&update);
+
+    let execution = Command::new(&output_path)
+        .output()
+        .expect("injected executable should return to the original entry point");
+    assert_eq!(execution.status.code(), Some(7));
+    assert_eq!(execution.stdout, b"injected\noriginal\n");
     assert!(execution.stderr.is_empty());
 }
 

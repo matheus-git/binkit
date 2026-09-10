@@ -154,7 +154,8 @@ println!("rel32: {}", calculate_rel32(0x405000, binary.entry())?);
 
 ## Development
 
-Rust stable is required. Run the same quality checks used by CI:
+The project toolchain is pinned in `rust-toolchain.toml` and is installed automatically by
+`rustup`. Run the same quality checks used by CI:
 
 ```sh
 cargo fmt --all -- --check
@@ -164,8 +165,8 @@ cargo build --release --locked
 ```
 
 The integration tests also use GNU binutils, GCC, Clang, and lld. They compile several ELF64
-variants and execute an injected x86-64 fixture to verify the modified entry point and payload.
-On Debian or Ubuntu:
+variants, execute an injected x86-64 payload, and verify that another payload can restore the
+initial process state and return to the original entry point. On Debian or Ubuntu:
 
 ```sh
 sudo apt-get update
