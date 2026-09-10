@@ -6,9 +6,7 @@ Binkit is a Rust command-line toolbox for inspecting, disassembling, and modifyi
 binaries. It can display ELF metadata, disassemble x86-64 code, calculate an injection plan,
 append a payload, and update the executable entry point.
 
-> Use Binkit only with software you own or are authorized to analyze. Modifying or injecting
-> code into third-party software without permission may be illegal. This project is intended
-> for education, research, and authorized security analysis.
+> Use Binkit only on binaries you own or are authorized to modify. You are responsible for complying with applicable laws, licenses, and policies.
 
 ## Features
 
