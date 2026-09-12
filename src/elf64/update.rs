@@ -29,7 +29,10 @@ impl UpdateBinary<'_> {
             let overwrite = self.dto.force || final_output == self.dto.file;
             save_file(final_output, &bytes, overwrite, Some(self.dto.file))?;
             heading("Update complete", self.dto.file)?;
-            field("Entry point", entry)?;
+            field(
+                "Entry point",
+                format_args!("0x{:016X}", self.binary.entry()),
+            )?;
             field("Output", final_output)?;
             blank()?;
             success("Output written atomically · permissions preserved")?;

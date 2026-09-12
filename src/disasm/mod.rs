@@ -1,4 +1,4 @@
-use crate::presentation::heading;
+use crate::presentation::{heading, write_field};
 use crate::utils::bytes_to_hex::bytes_to_hex;
 use anyhow::{Result, anyhow};
 use capstone_sys::{
@@ -153,8 +153,8 @@ pub fn disass_with_count(addr: u64, buf: &[u8], max_instructions: Option<usize>)
         )?;
         let instruction_count = decoder.write_all(&mut output, buf, addr, max_instructions)?;
         writeln!(output)?;
-        writeln!(output, "{:<18} {instruction_count}", "Instructions")?;
-        writeln!(output, "{:<18} {}", "Decoded bytes", buf.len())?;
+        write_field(&mut output, "Instructions", instruction_count)?;
+        write_field(&mut output, "Decoded bytes", buf.len())?;
         output.flush()?;
         Ok(())
     })();

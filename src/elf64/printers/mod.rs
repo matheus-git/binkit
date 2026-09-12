@@ -125,7 +125,7 @@ pub fn print_header(header: &Elf64Header, endian: &Endian, file: &str) -> Result
         },
     ];
     let table = Table::new(fields)
-        .with(Settings::default().with(Style::psql()))
+        .with(Settings::default().with(Style::modern()))
         .to_string();
     line(format_args!("{table}"))?;
     Ok(())
@@ -153,7 +153,7 @@ pub fn print_program_headers(phs: &[Elf64ProgramHeader], endian: &Endian) -> Res
         p_align: String,
     }
 
-    let table_config = Settings::default().with(Style::psql());
+    let table_config = Settings::default().with(Style::modern());
 
     let mut fields: Vec<ProgramHeaderFields> = Vec::with_capacity(phs.len());
 
@@ -208,7 +208,7 @@ pub fn print_section_headers(
         sh_entsize: String,
     }
 
-    let table_config = Settings::default().with(Style::psql());
+    let table_config = Settings::default().with(Style::modern());
 
     let mut fields: Vec<SectionHeaderFields> = Vec::with_capacity(shs.len());
 
