@@ -22,11 +22,19 @@ impl CheckInjectBinary<'_> {
             .binary
             .get_address_to_inject()
             .context("Failed to determine injection address")?;
-        let rel32_addr = calculate_rel32(addr, return_address)?;
+        let start_delta = calculate_rel32(addr, return_address)?;
         heading("Injection plan", self.dto.file)?;
         accent_field("Virtual address", format_args!("0x{addr:016X}"))?;
         field("Return address", format_args!("0x{return_address:016X}"))?;
-        field("Return rel32", format_args!("{rel32_addr:+#010X}"))?;
+        field(
+            "Start → return",
+            format_args!("0x{:08X} ({start_delta:+})", start_delta as u32),
+        )?;
+        field(
+            "JMP rel32",
+            "start-to-return − JMP byte offset − 5-byte instruction size",
+        )?;
+        field("Example", "JMP at payload offset 40: subtract 45 (0x2D)")?;
 
         Ok(())
     }

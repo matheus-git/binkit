@@ -160,7 +160,7 @@ impl InjectBinary<'_> {
         }
         let mut injected: Vec<u8> = (&*self.binary).try_into()?;
         injected.extend_from_slice(&bytes);
-        let rel32_addr = calculate_rel32(address, return_address)?;
+        let start_delta = calculate_rel32(address, return_address)?;
 
         save_file(
             self.dto.output,
@@ -179,7 +179,14 @@ impl InjectBinary<'_> {
             field("Entry point", format_args!("0x{address:016X}"))?;
         }
         field("Return address", format_args!("0x{return_address:016X}"))?;
-        field("Return rel32", format_args!("{rel32_addr:+#010X}"))?;
+        field(
+            "Start → return",
+            format_args!("0x{:08X} ({start_delta:+})", start_delta as u32),
+        )?;
+        field(
+            "JMP rel32",
+            "start-to-return − JMP byte offset − 5-byte instruction size",
+        )?;
         field("Output", self.dto.output)?;
         blank()?;
         success("Output written atomically · permissions preserved")?;
