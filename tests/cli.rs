@@ -319,8 +319,8 @@ fn check_inject_reports_the_selected_addresses() {
     assert!(output.contains("Start → return"));
     assert!(output.contains("0xFFFF"));
     assert!(output.contains("(-"));
-    assert!(output.contains("JMP rel32"));
-    assert!(output.contains("subtract 45 (0x2D)"));
+    assert!(output.contains("rel32 notice"));
+    assert!(output.contains("relative to the address after the JMP instruction"));
 }
 
 #[test]

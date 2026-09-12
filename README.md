@@ -122,14 +122,8 @@ binkit check-inject ./program --return-address 0x401000
 
 This command only reports values; it does not modify or create a file.
 
-The reported start-to-return distance is not a `jmp rel32` immediate by itself. For a near jump,
-subtract the byte offset of the `E9` opcode within the payload and the instruction's 5-byte size:
-
-```text
-jmp_rel32 = start_to_return - jmp_offset - 5
-```
-
-For example, a `jmp` at payload offset 40 requires subtracting 45 (`0x2D`).
+The reported start-to-return distance is not a `jmp rel32` immediate by itself. A `jmp rel32`
+uses the address immediately after the jump instruction as its reference point.
 
 ### Inject a payload
 

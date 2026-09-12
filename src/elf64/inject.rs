@@ -184,8 +184,8 @@ impl InjectBinary<'_> {
             format_args!("0x{:08X} ({start_delta:+})", start_delta as u32),
         )?;
         field(
-            "JMP rel32",
-            "start-to-return − JMP byte offset − 5-byte instruction size",
+            "rel32 notice",
+            "A JMP rel32 is relative to the address after the JMP instruction",
         )?;
         field("Output", self.dto.output)?;
         blank()?;
