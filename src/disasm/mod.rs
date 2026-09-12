@@ -100,14 +100,11 @@ impl IterativeDisassembler {
                 .unwrap_or("");
             let separator = if operands.is_empty() { "" } else { " " };
             let bytes = bytes_to_hex(bytes);
-            let assembly_width = mnemonic.len() + separator.len() + operands.len();
-            let padding = 48_usize.saturating_sub(assembly_width);
-            write!(
+            writeln!(
                 output,
-                "0x{:016X} │ {mnemonic}{separator}{operands}",
+                "0x{:016X} │ {bytes} │ {mnemonic}{separator}{operands}",
                 instruction.address,
             )?;
-            writeln!(output, "{:<padding$} │ {bytes}", "")?;
             count += 1;
         }
         Ok(count)
@@ -146,14 +143,8 @@ pub fn disass_with_count(addr: u64, buf: &[u8], max_instructions: Option<usize>)
     let stdout = io::stdout();
     let mut output = io::BufWriter::new(stdout.lock());
     let result = (|| -> Result<()> {
-        writeln!(output, "{:<18} │ {:<48} │ Bytes", "Address", "Assembly")?;
-        writeln!(
-            output,
-            "{}─┼─{}─┼─{}",
-            "─".repeat(18),
-            "─".repeat(48),
-            "─".repeat(44)
-        )?;
+        writeln!(output, "Address │ Bytes │ Assembly")?;
+        writeln!(output, "────────┼───────┼─────────")?;
         let instruction_count = decoder.write_all(&mut output, buf, addr, max_instructions)?;
         writeln!(output)?;
         writeln!(output, "{:<18} {instruction_count}", "Instructions")?;

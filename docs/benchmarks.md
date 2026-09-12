@@ -17,17 +17,17 @@ per command (September 12, 2026):
 
 | Input | Size | Operation | Binkit median | Competitor median | Binkit/competitor |
 |---|---:|---|---:|---:|---:|
-| `true` | 26.3 KiB | sections (`readelf`) | 1.59 ms | 0.76 ms | 2.09x |
-| `true` | 26.3 KiB | disassembly (`objdump`) | 2.36 ms | 2.57 ms | 0.92x |
-| `ls` | 139.0 KiB | sections (`readelf`) | 1.00 ms | 0.52 ms | 1.93x |
-| `ls` | 139.0 KiB | disassembly (`objdump`) | 11.39 ms | 13.31 ms | 0.86x |
-| `python3.12` | 7.65 MiB | sections (`readelf`) | 0.91 ms | 0.51 ms | 1.78x |
-| `python3.12` | 7.65 MiB | disassembly (`objdump`) | 369.96 ms | 463.85 ms | 0.80x |
+| `true` | 26.3 KiB | sections (`readelf`) | 1.21 ms | 0.68 ms | 1.78x |
+| `true` | 26.3 KiB | disassembly (`objdump`) | 1.99 ms | 2.43 ms | 0.82x |
+| `ls` | 139.0 KiB | sections (`readelf`) | 1.20 ms | 0.49 ms | 2.44x |
+| `ls` | 139.0 KiB | disassembly (`objdump`) | 8.95 ms | 14.52 ms | 0.62x |
+| `python3.12` | 7.65 MiB | sections (`readelf`) | 1.65 ms | 0.84 ms | 1.96x |
+| `python3.12` | 7.65 MiB | disassembly (`objdump`) | 261.82 ms | 461.16 ms | 0.57x |
 
 Lower is better. On this run GNU remained faster at listing sections, while Binkit's iterative
 disassembly was faster on all three fixtures.
 Relative to Binkit's original table-building implementation, the large-fixture median fell from
-1,342.59 ms to 369.96 ms (3.6x faster).
+1,342.59 ms to 261.82 ms (5.1x faster).
 Peak RSS in a separate `/usr/bin/time` run fell from about 1.9 GiB to about 10 MiB. The decoder uses
 Capstone's `cs_disasm_iter` API and reuses one instruction allocation for the whole section;
 the `info` and `disasm` commands map their input instead of copying the entire file.

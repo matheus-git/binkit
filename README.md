@@ -27,12 +27,12 @@ limitations.
 Binkit's iterative Capstone decoder outperformed GNU `objdump` on all three `.text` fixtures in
 the reference benchmark:
 
-- 26 KiB ELF: **2.36 ms** versus `objdump` at 2.57 ms (**1.09x faster**).
-- 139 KiB ELF: **11.39 ms** versus `objdump` at 13.31 ms (**1.17x faster**).
-- 7.65 MiB ELF: **369.96 ms** versus `objdump` at 463.85 ms (**1.25x faster**).
+- 26 KiB ELF: **1.99 ms** versus `objdump` at 2.43 ms (**1.22x faster**).
+- 139 KiB ELF: **8.95 ms** versus `objdump` at 14.52 ms (**1.62x faster**).
+- 7.65 MiB ELF: **261.82 ms** versus `objdump` at 461.16 ms (**1.76x faster**).
 
-Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 0.91–1.59 ms,
-compared with 0.51–0.76 ms for `readelf`. The large disassembly's peak memory use fell from
+Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 1.20–1.65 ms,
+compared with 0.49–0.84 ms for `readelf`. The large disassembly's peak memory use fell from
 about 1.9 GiB in the original implementation to about 10 MiB with iterative decoding and `mmap`.
 
 These are warm-cache medians from 15 measured runs after 3 warm-ups on Linux x86-64 with GNU
@@ -100,14 +100,14 @@ binkit disasm ./payload.bin --bin --offset 16 --count 10
 mutually exclusive. `--bytes` limits the input window and `--count` limits decoded instructions;
 when combined, disassembly stops at whichever limit is reached first.
 
-Disassembly is streamed in address, assembly, and raw-byte columns, so large sections do not
+Disassembly is streamed in address, raw-byte, and assembly columns, so large sections do not
 need to be formatted entirely in memory:
 
 ```text
-Address            │ Assembly                                         │ Bytes
-───────────────────┼──────────────────────────────────────────────────┼──────────
-0x0000000000401000 │ push rbp                                         │ 55
-0x0000000000401001 │ mov rbp, rsp                                     │ 48 89 E5
+Address │ Bytes │ Assembly
+────────┼───────┼─────────
+0x0000000000401000 │ 55 │ push rbp
+0x0000000000401001 │ 48 89 E5 │ mov rbp, rsp
 ```
 
 ### Check an injection plan
