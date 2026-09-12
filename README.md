@@ -129,8 +129,13 @@ Append a payload and write the modified ELF to a new file:
 ```sh
 binkit inject ./program \
   --inject ./payload.bin \
+  --set-entry \
   --output ./program.injected
 ```
+
+`--set-entry` makes the injected payload the ELF entry point in the same operation. Omit it when
+the payload should only be appended and mapped. The injection address is selected automatically;
+`--address` is only an optional override.
 
 By default, Binkit repurposes `.note.gnu.property`, renames it to `.injected`, and assigns an
 aligned virtual address. Select another compatible section or address when needed:

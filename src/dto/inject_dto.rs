@@ -6,4 +6,5 @@ pub struct InjectDTO<'a> {
     pub return_address: Option<&'a str>,
     pub output: &'a str,
     pub force: bool,
+    pub set_entry: bool,
 }

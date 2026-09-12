@@ -154,6 +154,10 @@ impl InjectBinary<'_> {
         let section = self.dto.section.unwrap_or(".note.gnu.property");
 
         self.inject(&bytes, address, section)?;
+        if self.dto.set_entry {
+            let endian = self.binary.endian();
+            self.binary.header.e_entry.raw = Cow::Owned(endian.to_bytes_u64(address));
+        }
         let mut injected: Vec<u8> = (&*self.binary).try_into()?;
         injected.extend_from_slice(&bytes);
         let rel32_addr = calculate_rel32(address, return_address)?;
@@ -171,6 +175,9 @@ impl InjectBinary<'_> {
         )?;
         field("Section", ".injected")?;
         accent_field("Virtual address", format_args!("0x{address:016X}"))?;
+        if self.dto.set_entry {
+            field("Entry point", format_args!("0x{address:016X}"))?;
+        }
         field("Return address", format_args!("0x{return_address:016X}"))?;
         field("Return rel32", format_args!("{rel32_addr:+#010X}"))?;
         field("Output", self.dto.output)?;

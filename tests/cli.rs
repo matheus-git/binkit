@@ -392,7 +392,32 @@ fn inject_adds_payload_and_produces_valid_elf_structure() {
 }
 
 #[test]
-fn injected_payload_executes_from_the_updated_entry_point() {
+fn inject_accepts_a_bare_output_filename() {
+    let dir = TestDir::new();
+    let input = dir.path("fixture.elf");
+    let payload = dir.path("payload.bin");
+    write_fixture(&input);
+    fs::write(&payload, [0x90, 0xc3]).unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_binkit"))
+        .current_dir(&dir.0)
+        .args([
+            "inject",
+            "fixture.elf",
+            "--inject",
+            "payload.bin",
+            "--output",
+            "injected.elf",
+        ])
+        .output()
+        .expect("binkit should start");
+
+    assert_success(&output);
+    assert!(dir.path("injected.elf").is_file());
+}
+
+#[test]
+fn inject_set_entry_executes_the_payload() {
     let dir = TestDir::new();
     let source = dir.path("fixture.c");
     let input = dir.path("fixture");
@@ -434,12 +459,15 @@ fn injected_payload_executes_from_the_updated_entry_point() {
         payload.to_str().unwrap(),
         "--output",
         output_path.to_str().unwrap(),
+        "--set-entry",
     ]);
     assert_success(&inject);
 
-    let entry = format!("0x{injection_address:X}");
-    let update = binkit(&["update", output_path.to_str().unwrap(), "--entry", &entry]);
-    assert_success(&update);
+    let injected = fs::read(&output_path).unwrap();
+    assert_eq!(
+        Elf64Binary::new(&injected).unwrap().entry(),
+        injection_address
+    );
 
     let execution = Command::new(&output_path)
         .output()

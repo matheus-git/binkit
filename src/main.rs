@@ -54,6 +54,9 @@ enum Commands {
 
         #[arg(short = 'f', long, help = "Overwrite the output file if it exists")]
         force: bool,
+
+        #[arg(long, help = "Set the ELF entry point to the injected payload address")]
+        set_entry: bool,
     },
 
     #[command(about = "Check available injection point in an ELF file")]
@@ -167,6 +170,7 @@ fn main() -> Result<()> {
             output,
             section,
             force,
+            set_entry,
         } => {
             raw = load_file(file)?;
             binary = Elf64Binary::new(&raw)?;
@@ -179,6 +183,7 @@ fn main() -> Result<()> {
                 return_address: return_address.as_deref(),
                 output,
                 force: *force,
+                set_entry: *set_entry,
             };
 
             let mut inject = binary.inject(dto);

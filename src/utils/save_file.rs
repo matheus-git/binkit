@@ -6,9 +6,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
+fn parent_or_current(path: &Path) -> &Path {
+    path.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+}
+
 #[cfg(unix)]
 fn sync_parent(path: &Path) -> io::Result<()> {
-    fs::File::open(path.parent().unwrap_or_else(|| Path::new(".")))?.sync_all()
+    fs::File::open(parent_or_current(path))?.sync_all()
 }
 
 #[cfg(not(unix))]
@@ -17,7 +23,7 @@ fn sync_parent(_path: &Path) -> io::Result<()> {
 }
 
 fn temporary_path(destination: &Path) -> io::Result<PathBuf> {
-    let parent = destination.parent().unwrap_or_else(|| Path::new("."));
+    let parent = parent_or_current(destination);
     let name = destination.file_name().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, "destination has no file name")
     })?;
@@ -72,10 +78,16 @@ pub fn save_file(
 
 #[cfg(test)]
 mod tests {
-    use super::save_file;
+    use super::{parent_or_current, save_file};
+    use std::path::Path;
 
     #[test]
     fn reports_an_error_when_the_destination_is_a_directory() {
         assert!(save_file(".", b"data", true, None).is_err());
+    }
+
+    #[test]
+    fn treats_a_bare_filename_as_being_in_the_current_directory() {
+        assert_eq!(parent_or_current(Path::new("output.bin")), Path::new("."));
     }
 }
