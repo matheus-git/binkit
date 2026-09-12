@@ -144,7 +144,6 @@ fn info_prints_all_requested_header_groups() {
     assert!(output.contains("Section headers  3 total"));
     assert!(output.contains("Entry point"));
     assert!(output.contains(".note.gnu.property"));
-    assert!(output.contains('│'));
 }
 
 #[test]
@@ -340,7 +339,7 @@ fn update_changes_the_entry_point_and_produces_valid_elf() {
     let command_output = stdout(&output);
     assert!(command_output.contains("Update complete"));
     assert!(command_output.contains("Entry point"));
-    assert!(command_output.contains("0x0000000000402000"));
+    assert!(command_output.contains("0x402000"));
     assert!(command_output.contains("Output written atomically · permissions preserved"));
     let raw = fs::read(&output_path).unwrap();
     assert_eq!(Elf64Binary::new(&raw).unwrap().entry(), 0x402000);

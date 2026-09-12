@@ -39,22 +39,15 @@ pub fn heading(title: &str, context: &str) -> io::Result<()> {
 }
 
 pub fn field(label: &str, value: impl std::fmt::Display) -> io::Result<()> {
-    let label = paint("2", format_args!("{label:<18}"));
-    line(format_args!("{label} {value}"))
+    line(format_args!("{:<18} {value}", paint("2", label)))
 }
 
 pub fn accent_field(label: &str, value: impl std::fmt::Display) -> io::Result<()> {
-    let label = paint("2", format_args!("{label:<18}"));
-    line(format_args!("{label} {}", paint("36", value)))
-}
-
-pub fn write_field(
-    output: &mut impl Write,
-    label: &str,
-    value: impl std::fmt::Display,
-) -> io::Result<()> {
-    let label = paint("2", format_args!("{label:<18}"));
-    writeln!(output, "{label} {value}")
+    line(format_args!(
+        "{:<18} {}",
+        paint("2", label),
+        paint("36", value)
+    ))
 }
 
 pub fn success(message: impl std::fmt::Display) -> io::Result<()> {
