@@ -27,12 +27,12 @@ limitations.
 Binkit's iterative Capstone decoder outperformed GNU `objdump` on all three `.text` fixtures in
 the reference benchmark:
 
-- 26 KiB ELF: **1.99 ms** versus `objdump` at 2.43 ms (**1.22x faster**).
-- 139 KiB ELF: **8.95 ms** versus `objdump` at 14.52 ms (**1.62x faster**).
-- 7.65 MiB ELF: **261.82 ms** versus `objdump` at 461.16 ms (**1.76x faster**).
+- 26 KiB ELF: **2.00 ms** versus `objdump` at 2.42 ms (**1.21x faster**).
+- 139 KiB ELF: **8.57 ms** versus `objdump` at 13.37 ms (**1.56x faster**).
+- 7.65 MiB ELF: **261.48 ms** versus `objdump` at 464.37 ms (**1.78x faster**).
 
-Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 1.20–1.65 ms,
-compared with 0.49–0.84 ms for `readelf`. The large disassembly's peak memory use fell from
+Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 0.83–1.13 ms,
+compared with 0.46–0.51 ms for `readelf`. The large disassembly's peak memory use fell from
 about 1.9 GiB in the original implementation to about 10 MiB with iterative decoding and `mmap`.
 
 These are warm-cache medians from 15 measured runs after 3 warm-ups on Linux x86-64 with GNU
@@ -104,10 +104,10 @@ Disassembly is streamed in address, raw-byte, and assembly columns, so large sec
 need to be formatted entirely in memory:
 
 ```text
-Address │ Bytes │ Assembly
-────────┼───────┼─────────
-0x0000000000401000 │ 55 │ push rbp
-0x0000000000401001 │ 48 89 E5 │ mov rbp, rsp
+Address             │  Bytes  │  Assembly
+────────────────────┼─────────┼──────────
+0x0000000000401000  │  55  │  push rbp
+0x0000000000401001  │  48 89 E5  │  mov rbp, rsp
 ```
 
 ### Check an injection plan
