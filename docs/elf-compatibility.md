@@ -23,6 +23,12 @@ Disassembly and payload injection support only little-endian x86-64 ELF files. B
 other machine types and big-endian files before changing or decoding data. Raw binary
 disassembly (`disasm --bin`) is interpreted as x86-64 machine code.
 
+ELF disassembly can start at an offset relative to the selected section or at a virtual address
+inside that section. Raw disassembly supports relative offsets but not virtual addresses. Byte
+and instruction limits may be combined; decoding stops when either limit is reached. If the
+selected byte range ends in the middle of an instruction, that incomplete instruction is not
+emitted.
+
 Injection additionally requires the selected section (by default `.note.gnu.property`) and a
 program header with the same original file offset. If either structure is absent, injection
 fails without creating the output file. Renaming the selected section to `.injected` must fit

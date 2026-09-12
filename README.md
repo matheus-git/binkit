@@ -10,7 +10,7 @@ append a payload, and update the executable entry point.
 
 ## Features
 
-- Display complete ELF64, program-header, and section-header information.
+- Display ELF64, program-header, and section-header information for the supported format subset.
 - Disassemble ELF sections or raw x86-64 machine code using Intel syntax.
 - Calculate aligned payload addresses and signed `rel32` return offsets.
 - Append a payload by repurposing a compatible section and program header.
@@ -24,16 +24,16 @@ limitations.
 
 ## Performance
 
-Binkit's iterative Capstone decoder outperformed GNU `objdump` when disassembling `.text` in
+Binkit's iterative Capstone decoder outperformed GNU `objdump` on all three `.text` fixtures in
 the reference benchmark:
 
-- 26 KiB ELF: **1.60 ms** versus `objdump` at 2.26 ms (**1.41x faster**).
-- 139 KiB ELF: **7.41 ms** versus `objdump` at 13.35 ms (**1.80x faster**).
-- 7.65 MiB ELF: **228.83 ms** versus `objdump` at 460.79 ms (**2.01x faster**).
+- 26 KiB ELF: **2.36 ms** versus `objdump` at 2.57 ms (**1.09x faster**).
+- 139 KiB ELF: **11.39 ms** versus `objdump` at 13.31 ms (**1.17x faster**).
+- 7.65 MiB ELF: **369.96 ms** versus `objdump` at 463.85 ms (**1.25x faster**).
 
-Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 0.79–0.89 ms,
-compared with 0.41–0.46 ms for `readelf`. The large disassembly's peak memory use fell from
-about 1.9 GiB in the original implementation to 9.9 MiB with iterative decoding and `mmap`.
+Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 0.91–1.59 ms,
+compared with 0.51–0.76 ms for `readelf`. The large disassembly's peak memory use fell from
+about 1.9 GiB in the original implementation to about 10 MiB with iterative decoding and `mmap`.
 
 These are warm-cache medians from 15 measured runs after 3 warm-ups on Linux x86-64 with GNU
 binutils 2.42. Lower is better. See the [full methodology and reproducible benchmark](docs/benchmarks.md).
@@ -99,6 +99,16 @@ binkit disasm ./payload.bin --bin --offset 16 --count 10
 `--address` starts at a hexadecimal virtual address inside an ELF section. The two options are
 mutually exclusive. `--bytes` limits the input window and `--count` limits decoded instructions;
 when combined, disassembly stops at whichever limit is reached first.
+
+Disassembly is streamed in address, assembly, and raw-byte columns, so large sections do not
+need to be formatted entirely in memory:
+
+```text
+Address            │ Assembly                                         │ Bytes
+───────────────────┼──────────────────────────────────────────────────┼──────────
+0x0000000000401000 │ push rbp                                         │ 55
+0x0000000000401001 │ mov rbp, rsp                                     │ 48 89 E5
+```
 
 ### Check an injection plan
 

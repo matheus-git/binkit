@@ -99,13 +99,15 @@ impl IterativeDisassembler {
                 .to_str()
                 .unwrap_or("");
             let separator = if operands.is_empty() { "" } else { " " };
-            let assembly = format!("{mnemonic}{separator}{operands}");
             let bytes = bytes_to_hex(bytes);
-            writeln!(
+            let assembly_width = mnemonic.len() + separator.len() + operands.len();
+            let padding = 48_usize.saturating_sub(assembly_width);
+            write!(
                 output,
-                "0x{:016X} │ {assembly:<48} │ {bytes}",
+                "0x{:016X} │ {mnemonic}{separator}{operands}",
                 instruction.address,
             )?;
+            writeln!(output, "{:<padding$} │ {bytes}", "")?;
             count += 1;
         }
         Ok(count)

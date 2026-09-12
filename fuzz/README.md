@@ -13,4 +13,5 @@ Use a bounded run for routine local verification:
 cargo fuzz run elf64-roundtrip -- -max_total_time=60
 ```
 
-Crashes and minimized inputs are written under `fuzz/artifacts/` and must not be committed unless they are intentionally converted into regression fixtures.
+Crashes and minimized inputs are written under `fuzz/artifacts/`. Do not commit them unless they
+are intentionally converted into regression fixtures.

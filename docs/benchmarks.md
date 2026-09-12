@@ -17,21 +17,22 @@ per command (September 12, 2026):
 
 | Input | Size | Operation | Binkit median | Competitor median | Binkit/competitor |
 |---|---:|---|---:|---:|---:|
-| `true` | 26.3 KiB | sections (`readelf`) | 0.89 ms | 0.46 ms | 1.92x |
-| `true` | 26.3 KiB | disassembly (`objdump`) | 1.60 ms | 2.26 ms | 0.71x |
-| `ls` | 139.0 KiB | sections (`readelf`) | 0.81 ms | 0.41 ms | 1.99x |
-| `ls` | 139.0 KiB | disassembly (`objdump`) | 7.41 ms | 13.35 ms | 0.56x |
-| `python3.12` | 7.65 MiB | sections (`readelf`) | 0.79 ms | 0.43 ms | 1.83x |
-| `python3.12` | 7.65 MiB | disassembly (`objdump`) | 228.83 ms | 460.79 ms | 0.50x |
+| `true` | 26.3 KiB | sections (`readelf`) | 1.59 ms | 0.76 ms | 2.09x |
+| `true` | 26.3 KiB | disassembly (`objdump`) | 2.36 ms | 2.57 ms | 0.92x |
+| `ls` | 139.0 KiB | sections (`readelf`) | 1.00 ms | 0.52 ms | 1.93x |
+| `ls` | 139.0 KiB | disassembly (`objdump`) | 11.39 ms | 13.31 ms | 0.86x |
+| `python3.12` | 7.65 MiB | sections (`readelf`) | 0.91 ms | 0.51 ms | 1.78x |
+| `python3.12` | 7.65 MiB | disassembly (`objdump`) | 369.96 ms | 463.85 ms | 0.80x |
 
 Lower is better. On this run GNU remained faster at listing sections, while Binkit's iterative
-disassembly was faster on all three fixtures. Relative to Binkit's original table-building
-implementation, the large-fixture median fell from 1,342.59 ms to 228.83 ms (5.9x faster).
-Peak RSS in a separate `/usr/bin/time` run fell from about 1.9 GiB to 9.9 MiB. The decoder uses
+disassembly was faster on all three fixtures.
+Relative to Binkit's original table-building implementation, the large-fixture median fell from
+1,342.59 ms to 369.96 ms (3.6x faster).
+Peak RSS in a separate `/usr/bin/time` run fell from about 1.9 GiB to about 10 MiB. The decoder uses
 Capstone's `cs_disasm_iter` API and reuses one instruction allocation for the whole section;
-read-only commands map their input instead of copying the entire file.
+the `info` and `disasm` commands map their input instead of copying the entire file.
 
-The release executables on this host were 9.10 MiB for Binkit, 771 KiB for `readelf`, and
+The release executables on this host were 9.11 MiB for Binkit, 771 KiB for `readelf`, and
 382 KiB for `objdump`. This is an installed-file comparison, not a like-for-like accounting:
 Binkit combines multiple operations in one Rust executable, while the GNU programs dynamically
 share libraries and belong to a larger tool suite.
