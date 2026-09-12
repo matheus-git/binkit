@@ -6,7 +6,7 @@ use capstone_sys::{
     cs_open, cs_opt_type, cs_opt_value, cs_option, cs_strerror, csh,
 };
 use std::ffi::CStr;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::ptr;
 
 struct IterativeDisassembler {
@@ -56,6 +56,7 @@ impl IterativeDisassembler {
         buf: &[u8],
         addr: u64,
         max_instructions: Option<usize>,
+        aligned: bool,
     ) -> Result<usize> {
         let mut code = buf.as_ptr();
         let mut remaining = buf.len();
@@ -100,11 +101,19 @@ impl IterativeDisassembler {
                 .unwrap_or("");
             let separator = if operands.is_empty() { "" } else { " " };
             let bytes = bytes_to_hex(bytes);
-            writeln!(
-                output,
-                "0x{:016X}  │  {bytes}  │  {mnemonic}{separator}{operands}",
-                instruction.address,
-            )?;
+            if aligned {
+                writeln!(
+                    output,
+                    "0x{:016X} │ {bytes:<44} │ {mnemonic}{separator}{operands}",
+                    instruction.address,
+                )?;
+            } else {
+                writeln!(
+                    output,
+                    "0x{:016X}  │  {bytes}  │  {mnemonic}{separator}{operands}",
+                    instruction.address,
+                )?;
+            }
             count += 1;
         }
         Ok(count)
@@ -141,11 +150,24 @@ pub fn disass_with_count(addr: u64, buf: &[u8], max_instructions: Option<usize>)
     heading("Disassembly", "x86-64 · Intel syntax")?;
 
     let stdout = io::stdout();
+    let aligned = stdout.is_terminal();
     let mut output = io::BufWriter::new(stdout.lock());
     let result = (|| -> Result<()> {
-        writeln!(output, "Address             │  Bytes  │  Assembly")?;
-        writeln!(output, "────────────────────┼─────────┼──────────")?;
-        let instruction_count = decoder.write_all(&mut output, buf, addr, max_instructions)?;
+        if aligned {
+            writeln!(output, "{:<18} │ {:<44} │ Assembly", "Address", "Bytes")?;
+            writeln!(
+                output,
+                "{}─┼─{}─┼─{}",
+                "─".repeat(18),
+                "─".repeat(44),
+                "─".repeat(32)
+            )?;
+        } else {
+            writeln!(output, "Address             │  Bytes  │  Assembly")?;
+            writeln!(output, "────────────────────┼─────────┼──────────")?;
+        }
+        let instruction_count =
+            decoder.write_all(&mut output, buf, addr, max_instructions, aligned)?;
         writeln!(output)?;
         writeln!(output, "{:<18} {instruction_count}", "Instructions")?;
         writeln!(output, "{:<18} {}", "Decoded bytes", buf.len())?;
@@ -187,7 +209,7 @@ mod tests {
         let mut decoder = IterativeDisassembler::x86_64().unwrap();
         let mut output = Vec::new();
         let count = decoder
-            .write_all(&mut output, &[0x90, 0x90, 0xc3], 0x1000, Some(2))
+            .write_all(&mut output, &[0x90, 0x90, 0xc3], 0x1000, Some(2), false)
             .unwrap();
         let output = String::from_utf8(output).unwrap();
         assert_eq!(count, 2);
@@ -199,7 +221,9 @@ mod tests {
     fn iterator_handles_incomplete_instruction_without_error() {
         let mut decoder = IterativeDisassembler::x86_64().unwrap();
         let mut output = Vec::new();
-        let count = decoder.write_all(&mut output, &[0x0f], 0, None).unwrap();
+        let count = decoder
+            .write_all(&mut output, &[0x0f], 0, None, false)
+            .unwrap();
         assert_eq!(count, 0);
         assert!(output.is_empty());
     }
@@ -208,7 +232,9 @@ mod tests {
     fn zero_instruction_limit_decodes_nothing() {
         let mut decoder = IterativeDisassembler::x86_64().unwrap();
         let mut output = Vec::new();
-        let count = decoder.write_all(&mut output, &[0x90], 0, Some(0)).unwrap();
+        let count = decoder
+            .write_all(&mut output, &[0x90], 0, Some(0), false)
+            .unwrap();
         assert_eq!(count, 0);
         assert!(output.is_empty());
     }
@@ -217,11 +243,26 @@ mod tests {
     fn iterator_propagates_writer_errors() {
         let mut decoder = IterativeDisassembler::x86_64().unwrap();
         let error = decoder
-            .write_all(&mut FailingWriter, &[0x90], 0, None)
+            .write_all(&mut FailingWriter, &[0x90], 0, None, false)
             .unwrap_err();
         assert_eq!(
             error.downcast_ref::<io::Error>().unwrap().kind(),
             io::ErrorKind::BrokenPipe
         );
+    }
+
+    #[test]
+    fn aligned_output_keeps_bytes_and_assembly_in_fixed_columns() {
+        let mut decoder = IterativeDisassembler::x86_64().unwrap();
+        let mut output = Vec::new();
+        decoder
+            .write_all(&mut output, &[0x90, 0xc3], 0, None, true)
+            .unwrap();
+        let output = String::from_utf8(output).unwrap();
+        for line in output.lines() {
+            let columns: Vec<_> = line.split('│').collect();
+            assert_eq!(columns.len(), 3);
+            assert_eq!(columns[1].chars().count(), 46);
+        }
     }
 }

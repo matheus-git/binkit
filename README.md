@@ -100,14 +100,14 @@ binkit disasm ./payload.bin --bin --offset 16 --count 10
 mutually exclusive. `--bytes` limits the input window and `--count` limits decoded instructions;
 when combined, disassembly stops at whichever limit is reached first.
 
-Disassembly is streamed in address, raw-byte, and assembly columns, so large sections do not
-need to be formatted entirely in memory:
+Disassembly is streamed in aligned address, raw-byte, and assembly columns in a terminal. Pipes
+and redirected output use compact separators to avoid emitting unnecessary padding:
 
 ```text
-Address             │  Bytes  │  Assembly
-────────────────────┼─────────┼──────────
-0x0000000000401000  │  55  │  push rbp
-0x0000000000401001  │  48 89 E5  │  mov rbp, rsp
+Address            │ Bytes                                        │ Assembly
+───────────────────┼──────────────────────────────────────────────┼──────────
+0x0000000000401000 │ 55                                           │ push rbp
+0x0000000000401001 │ 48 89 E5                                     │ mov rbp, rsp
 ```
 
 ### Check an injection plan
