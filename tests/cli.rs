@@ -316,7 +316,7 @@ fn check_inject_reports_the_selected_addresses() {
     assert!(output.contains("Injection plan"));
     assert!(output.contains("Virtual address"));
     assert!(output.contains("Return address     0x0000000000401000"));
-    assert!(output.contains("Start → return"));
+    assert!(output.contains("rel32 address"));
     assert!(output.contains("0xFFFF"));
     assert!(output.contains("(-"));
     assert!(output.contains("rel32 notice"));

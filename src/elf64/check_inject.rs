@@ -27,7 +27,7 @@ impl CheckInjectBinary<'_> {
         accent_field("Virtual address", format_args!("0x{addr:016X}"))?;
         field("Return address", format_args!("0x{return_address:016X}"))?;
         field(
-            "Start → return",
+            "rel32 address",
             format_args!("0x{:08X} ({start_delta:+})", start_delta as u32),
         )?;
         field(
