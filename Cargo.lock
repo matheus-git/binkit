@@ -69,8 +69,9 @@ name = "binkit"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "capstone",
+ "capstone-sys",
  "clap",
+ "libc",
  "plain",
  "proptest",
  "tabled",
@@ -102,16 +103,6 @@ name = "bytecount"
 version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "175812e0be2bccb6abe50bb8d566126198344f707e304f45c648fd8f2cc0365e"
-
-[[package]]
-name = "capstone"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "015ef5d5ca1743e3f94af9509ba6bd2886523cfee46e48d15c2ef5216fd4ac9a"
-dependencies = [
- "capstone-sys",
- "libc",
-]
 
 [[package]]
 name = "capstone-sys"

@@ -1,9 +1,12 @@
-use crate::disasm::disass;
+use crate::disasm::disass_with_count;
 use crate::elf64::Elf64Binary;
 use crate::elf64::types::elf64_section_header::Elf64SectionHeader;
 use crate::traits::binary::Binary;
 use crate::traits::header_field::HeaderField;
-use crate::{dto::disasm_dto::DisasmDTO, utils::endian::Endian};
+use crate::{
+    dto::disasm_dto::DisasmDTO,
+    utils::{endian::Endian, parse_hex::parse_hex_to_u64},
+};
 use anyhow::{Context, Result, anyhow};
 
 pub struct DisasmBinary<'a> {
@@ -53,8 +56,32 @@ impl DisasmBinary<'_> {
         self.binary.ensure_x86_64_little_endian("Disassembly")?;
         let section = self.dto.section.unwrap_or(".text");
 
-        let (addr, bytes) = self.get_bytes_section(section)?;
-        disass(addr, bytes)?;
+        let (section_addr, section_bytes) = self.get_bytes_section(section)?;
+        let offset = if let Some(address) = self.dto.address {
+            let address = parse_hex_to_u64(address).context("Invalid start address")?;
+            let relative = address.checked_sub(section_addr).ok_or_else(|| {
+                anyhow!("Address 0x{address:X} is before section '{section}' at 0x{section_addr:X}")
+            })?;
+            usize::try_from(relative).context("Address offset does not fit in usize")?
+        } else {
+            self.dto.offset.unwrap_or(0)
+        };
+        if offset > section_bytes.len() {
+            return Err(anyhow!(
+                "Start offset 0x{offset:X} is outside section '{section}' ({} bytes)",
+                section_bytes.len()
+            ));
+        }
+        let available = section_bytes.len() - offset;
+        let length = self.dto.bytes.unwrap_or(available).min(available);
+        let end = offset
+            .checked_add(length)
+            .context("Disassembly byte range overflows usize")?;
+        let address = section_addr
+            .checked_add(offset as u64)
+            .context("Disassembly address overflows u64")?;
+
+        disass_with_count(address, &section_bytes[offset..end], self.dto.count)?;
 
         Ok(())
     }

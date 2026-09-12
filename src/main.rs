@@ -1,5 +1,7 @@
 use binkit::elf64::Elf64Binary;
-use binkit::{CheckInjectDTO, DisasmDTO, InfoDTO, InjectDTO, UpdateDTO, disass};
+use binkit::{
+    CheckInjectDTO, DisasmDTO, InfoDTO, InjectDTO, MappedFile, UpdateDTO, disass_with_count,
+};
 
 use std::fs;
 
@@ -81,6 +83,26 @@ enum Commands {
             help = "Section name to disassemble. (default: .text) "
         )]
         section: Option<String>,
+
+        #[arg(
+            long,
+            conflicts_with = "address",
+            help = "Start at this byte offset within the selected input"
+        )]
+        offset: Option<usize>,
+
+        #[arg(
+            long,
+            conflicts_with = "offset",
+            help = "Start at this virtual address (hexadecimal, ELF input only)"
+        )]
+        address: Option<String>,
+
+        #[arg(long, help = "Decode at most this many instructions")]
+        count: Option<usize>,
+
+        #[arg(long, help = "Read at most this many bytes from the selected start")]
+        bytes: Option<usize>,
     },
 
     #[command(about = "Display ELF file information")]
@@ -181,19 +203,47 @@ fn main() -> Result<()> {
                 .execute()
                 .context("Check inject command failed")?;
         }
-        Commands::Disasm { file, section, bin } => {
+        Commands::Disasm {
+            file,
+            section,
+            bin,
+            offset,
+            address,
+            count,
+            bytes,
+        } => {
             if *bin {
-                let bytes = fs::read(file)?;
-                disass(0, &bytes)?;
+                if address.is_some() {
+                    return Err(anyhow::anyhow!("--address requires an ELF input"));
+                }
+                let mapped = MappedFile::open(file)?;
+                let input = mapped.as_ref();
+                let start = offset.unwrap_or(0);
+                if start > input.len() {
+                    return Err(anyhow::anyhow!(
+                        "Start offset 0x{start:X} is outside the input ({} bytes)",
+                        input.len()
+                    ));
+                }
+                let available = input.len() - start;
+                let length = bytes.unwrap_or(available).min(available);
+                let end = start
+                    .checked_add(length)
+                    .context("Disassembly byte range overflows usize")?;
+                disass_with_count(start as u64, &input[start..end], *count)?;
                 return Ok(());
             }
 
-            raw = load_file(file)?;
-            binary = Elf64Binary::new(&raw)?;
+            let mapped = MappedFile::open(file)?;
+            binary = Elf64Binary::new(mapped.as_ref())?;
 
             let dto = DisasmDTO {
                 file,
                 section: section.as_deref(),
+                offset: *offset,
+                address: address.as_deref(),
+                count: *count,
+                bytes: *bytes,
             };
 
             let disasm = binary.disasm(dto);
@@ -206,8 +256,8 @@ fn main() -> Result<()> {
             programs,
             sections,
         } => {
-            raw = load_file(file)?;
-            binary = Elf64Binary::new(&raw)?;
+            let mapped = MappedFile::open(file)?;
+            binary = Elf64Binary::new(mapped.as_ref())?;
 
             let dto = InfoDTO {
                 file,

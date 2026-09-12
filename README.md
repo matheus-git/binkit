@@ -22,6 +22,22 @@ append a payload, and update the executable entry point.
 See [ELF compatibility](docs/elf-compatibility.md) for the exact supported formats and current
 limitations.
 
+## Performance
+
+Binkit's iterative Capstone decoder outperformed GNU `objdump` when disassembling `.text` in
+the reference benchmark:
+
+- 26 KiB ELF: **1.60 ms** versus `objdump` at 2.26 ms (**1.41x faster**).
+- 139 KiB ELF: **7.41 ms** versus `objdump` at 13.35 ms (**1.80x faster**).
+- 7.65 MiB ELF: **228.83 ms** versus `objdump` at 460.79 ms (**2.01x faster**).
+
+Section listing remains faster in GNU `readelf`: memory-mapped Binkit took 0.79–0.89 ms,
+compared with 0.41–0.46 ms for `readelf`. The large disassembly's peak memory use fell from
+about 1.9 GiB in the original implementation to 9.9 MiB with iterative decoding and `mmap`.
+
+These are warm-cache medians from 15 measured runs after 3 warm-ups on Linux x86-64 with GNU
+binutils 2.42. Lower is better. See the [full methodology and reproducible benchmark](docs/benchmarks.md).
+
 ## Installation
 
 ### Cargo
@@ -68,13 +84,21 @@ Disassemble `.text` or another section from a little-endian x86-64 ELF file:
 ```sh
 binkit disasm ./program
 binkit disasm ./program --section .init
+binkit disasm ./program --address 0x401000 --count 20
+binkit disasm ./program --section .text --offset 64 --bytes 256
 ```
 
 Disassemble a file containing raw x86-64 machine code:
 
 ```sh
 binkit disasm ./payload.bin --bin
+binkit disasm ./payload.bin --bin --offset 16 --count 10
 ```
+
+`--offset` starts at a byte offset relative to the selected section or raw input, while
+`--address` starts at a hexadecimal virtual address inside an ELF section. The two options are
+mutually exclusive. `--bytes` limits the input window and `--count` limits decoded instructions;
+when combined, disassembly stops at whichever limit is reached first.
 
 ### Check an injection plan
 

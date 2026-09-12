@@ -1,9 +1,14 @@
+use std::fmt::Write;
+
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{b:02X}"))
-        .collect::<Vec<String>>()
-        .join(" ")
+    let mut output = String::with_capacity(bytes.len().saturating_mul(3).saturating_sub(1));
+    for (index, byte) in bytes.iter().enumerate() {
+        if index != 0 {
+            output.push(' ');
+        }
+        write!(output, "{byte:02X}").expect("writing to a String cannot fail");
+    }
+    output
 }
 
 #[cfg(test)]

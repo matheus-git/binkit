@@ -164,6 +164,78 @@ fn disasm_accepts_raw_machine_code() {
 }
 
 #[test]
+fn disasm_limits_raw_input_by_offset_bytes_and_count() {
+    let dir = TestDir::new();
+    let input = dir.path("code.bin");
+    fs::write(&input, [0xcc, 0x90, 0x90, 0xc3]).unwrap();
+
+    let output = binkit(&[
+        "disasm",
+        input.to_str().unwrap(),
+        "--bin",
+        "--offset",
+        "1",
+        "--bytes",
+        "2",
+        "--count",
+        "1",
+    ]);
+
+    assert_success(&output);
+    let output = stdout(&output);
+    assert!(output.contains("0x1 | nop | 90"));
+    assert!(output.contains("Instructions       1"));
+    assert!(!output.contains("ret"));
+}
+
+#[test]
+fn disasm_starts_at_elf_virtual_address() {
+    let dir = TestDir::new();
+    let input = dir.path("fixture.elf");
+    let mut fixture = elf64_fixture();
+    fixture[120..124].copy_from_slice(&[0x90, 0xc3, 0x90, 0x90]);
+    fs::write(&input, fixture).unwrap();
+
+    let output = binkit(&[
+        "disasm",
+        input.to_str().unwrap(),
+        "--section",
+        ".note.gnu.property",
+        "--address",
+        "0x400079",
+        "--count",
+        "1",
+    ]);
+
+    assert_success(&output);
+    let output = stdout(&output);
+    assert!(output.contains("0x400079 | ret | C3"));
+    assert!(output.contains("Instructions       1"));
+}
+
+#[test]
+fn disasm_rejects_invalid_ranges_and_conflicting_starts() {
+    let dir = TestDir::new();
+    let input = dir.path("code.bin");
+    fs::write(&input, [0x90]).unwrap();
+
+    let outside = binkit(&["disasm", input.to_str().unwrap(), "--bin", "--offset", "2"]);
+    assert!(!outside.status.success());
+    assert!(String::from_utf8_lossy(&outside.stderr).contains("outside the input"));
+
+    let conflict = binkit(&[
+        "disasm",
+        input.to_str().unwrap(),
+        "--offset",
+        "0",
+        "--address",
+        "0x0",
+    ]);
+    assert!(!conflict.status.success());
+    assert!(String::from_utf8_lossy(&conflict.stderr).contains("cannot be used with"));
+}
+
+#[test]
 fn disasm_exits_cleanly_when_a_pipe_closes_early() {
     let dir = TestDir::new();
     let input = dir.path("large-code.bin");
