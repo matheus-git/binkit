@@ -29,6 +29,13 @@ and instruction limits may be combined; decoding stops when either limit is reac
 selected byte range ends in the middle of an instruction, that incomplete instruction is not
 emitted.
 
+### Disassembly output
+
+The column order is always address, raw instruction bytes, then Intel-syntax assembly. When
+standard output is an interactive terminal, Binkit pads the byte column so the vertical dividers
+remain aligned. Pipes and redirected output retain the same order and separators but omit that
+padding, reducing output size and preserving throughput for automated processing.
+
 Injection additionally requires the selected section (by default `.note.gnu.property`) and a
 program header with the same original file offset. If either structure is absent, injection
 fails without creating the output file. Renaming the selected section to `.injected` must fit

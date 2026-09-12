@@ -105,7 +105,7 @@ and redirected output use compact separators to avoid emitting unnecessary paddi
 
 ```text
 Address            │ Bytes                                        │ Assembly
-───────────────────┼──────────────────────────────────────────────┼──────────
+───────────────────┼──────────────────────────────────────────────┼─────────────────────────────────
 0x0000000000401000 │ 55                                           │ push rbp
 0x0000000000401001 │ 48 89 E5                                     │ mov rbp, rsp
 ```

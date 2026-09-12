@@ -25,11 +25,10 @@ per command (September 12, 2026):
 | `python3.12` | 7.65 MiB | disassembly (`objdump`) | 261.48 ms | 464.37 ms | 0.56x |
 
 Lower is better. On this run GNU remained faster at listing sections, while Binkit's iterative
-disassembly was faster on all three fixtures.
-Relative to Binkit's original table-building implementation, the large-fixture median fell from
-1,342.59 ms to 261.48 ms (5.1x faster).
-Peak RSS in a separate `/usr/bin/time` run fell from about 1.9 GiB to about 10 MiB. The decoder uses
-Capstone's `cs_disasm_iter` API and reuses one instruction allocation for the whole section;
+disassembly was faster on all three fixtures. Relative to Binkit's original table-building
+implementation, the large-fixture median fell from 1,342.59 ms to 261.48 ms (5.1x faster).
+Peak RSS in a separate `/usr/bin/time` run fell from about 1.9 GiB to about 10 MiB. The decoder
+uses Capstone's `cs_disasm_iter` API and reuses one instruction allocation for the whole section;
 the `info` and `disasm` commands map their input instead of copying the entire file.
 
 The release executables on this host were 9.11 MiB for Binkit, 771 KiB for `readelf`, and
@@ -46,10 +45,12 @@ python3 benches/benchmark.py --runs 15 --warmup 3 --json target/benchmark.json
 ```
 
 Pass `--fixture PATH` repeatedly to use a controlled corpus. By default the script tests
-`/bin/true`, `/bin/ls`, and the resolved `python3` executable. Standard output is discarded so
-terminal rendering is not measured. Each command is warmed up, measured with a monotonic clock,
-and run in deterministic shuffled order to reduce ordering bias. The report uses the median as
-the primary result and p95 as a simple variability indicator.
+`/bin/true`, `/bin/ls`, and the resolved `python3` executable. Standard output is sent to
+`/dev/null`, so Binkit selects its compact non-terminal output. Formatting and buffered writes
+are still measured, but terminal-only alignment padding is intentionally excluded. Each command
+is warmed up, measured with a monotonic clock, and run in deterministic shuffled order to reduce
+ordering bias. The report uses the median as the primary result and p95 as a simple variability
+indicator.
 
 Results are specific to the machine, OS cache state, compiler, fixture binaries, and tool
 versions. Keep the generated JSON with any published result; it contains raw samples and tool
