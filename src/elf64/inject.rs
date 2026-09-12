@@ -181,7 +181,7 @@ impl InjectBinary<'_> {
         field("Return address", format_args!("0x{return_address:016X}"))?;
         field(
             "rel32 address",
-            format_args!("0x{:08X} ({start_delta:+})", start_delta as u32),
+            format_args!("0x{:08X}", start_delta as u32),
         )?;
         field(
             "rel32 notice",
