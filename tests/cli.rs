@@ -183,8 +183,8 @@ fn disasm_limits_raw_input_by_offset_bytes_and_count() {
 
     assert_success(&output);
     let output = stdout(&output);
-    assert!(output.contains("0x0000000000000001 │ 90"));
-    assert!(output.contains("│ nop"));
+    assert!(output.contains("0x0000000000000001 │ nop"));
+    assert!(output.contains("│ 90"));
     assert!(output.contains("Instructions       1"));
     assert!(!output.contains("ret"));
 }
@@ -210,8 +210,8 @@ fn disasm_starts_at_elf_virtual_address() {
 
     assert_success(&output);
     let output = stdout(&output);
-    assert!(output.contains("0x0000000000400079 │ C3"));
-    assert!(output.contains("│ ret"));
+    assert!(output.contains("0x0000000000400079 │ ret"));
+    assert!(output.contains("│ C3"));
     assert!(output.contains("Instructions       1"));
 }
 
